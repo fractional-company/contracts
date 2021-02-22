@@ -5,7 +5,7 @@ import "./OpenZeppelin/utils/Strings.sol";
 import "./OpenZeppelin/token/ERC721/ERC721.sol";
 import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
 
-import "./TokenVault.sol";
+import "./ERC721TokenVault.sol";
 
 contract VaultFactory {
   using Strings for *;

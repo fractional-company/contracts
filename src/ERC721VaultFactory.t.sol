@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
 
-import "./VaultFactory.sol";
+import "./ERC721VaultFactory.sol";
 import "./test/TestERC721.sol";
 
 interface Hevm {
