@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
 
+import "./Settings.sol";
 import "./ERC721VaultFactory.sol";
 import "./ERC721TokenVault.sol";
 import "./test/TestERC721.sol";
@@ -38,6 +39,10 @@ contract User is ERC721Holder {
     function call_bid(uint256 _amount) public {
         vault.bid{value: _amount}();
     }
+    
+    function call_start(uint256 _amount) public {
+        vault.start{value: _amount}();
+    }
 
     function call_cash() public {
         vault.cash();
@@ -53,19 +58,6 @@ contract Governor {
     constructor(address _factory) {
         factory = VaultFactory(_factory);
     }
-    
-    function call_updateGov(address payable _guy) public {
-        factory.updateGov(_guy);
-    }
-
-    // depositing WETH and minting
-    function call_acceptGov() public {
-        factory.acceptGov();
-    }
-    
-    function call_setFee(uint256 _fee) public {
-        factory.setFee(_fee);
-    }
 
     // to be able to receive funds
     receive() external payable {} // solhint-disable-line no-empty-blocks
@@ -77,6 +69,7 @@ contract VaultTest is DSTest, ERC721Holder {
     Hevm public hevm;
     
     VaultFactory public factory;
+    Settings public settings;
     TestERC721 public token;
     TokenVault public vault;
 
@@ -90,21 +83,16 @@ contract VaultTest is DSTest, ERC721Holder {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
-        factory = new VaultFactory();
+        settings = new Settings();
 
-        factory.setFee(100);
-
-        gov = new Governor(address(factory));
-
-        factory.updateGov(payable(address(gov)));
-        gov.call_acceptGov();
+        factory = new VaultFactory(address(settings));
 
         token = new TestERC721();
 
         token.mint(address(this), 1);
 
         token.setApprovalForAll(address(factory), true);
-        factory.mint(address(token), 1, 1 ether);
+        factory.mint("testName", "TEST", address(token), 1, 100e18, 1 ether, 50);
 
         vault = factory.vaults(0);
 
@@ -150,7 +138,7 @@ contract VaultTest is DSTest, ERC721Holder {
         vault.transfer(address(user2), 25000000000000000000);
         vault.transfer(address(user3), 50000000000000000000);
 
-        user1.call_bid(1.05 ether);
+        user1.call_start(1.05 ether);
 
         assertTrue(vault.auctionLive());
 
@@ -161,31 +149,26 @@ contract VaultTest is DSTest, ERC721Holder {
         user1.call_bid(2 ether);
         assertEq(bal + 1.5 ether, address(user2).balance);
 
-        hevm.warp(block.timestamp + 2 days);
-
-        uint256 govBal = address(gov).balance;
+        hevm.warp(block.timestamp + 7 days);
 
         vault.end();
-
-        // check that 10% fee went to gov
-        assertEq(govBal + 0.2 ether, address(gov).balance);
 
         assertEq(token.balanceOf(address(user1)), 1);
 
         // auction has ended. Now lets get all token holders their ETH
-        // user1 gets 1/4 of 1.8 ETH or 0.45 ETH
-        // user2 gets 1/4 of 1.8 ETH or 0.45 ETH
-        // this gets 1/2 of 1.8 ETH or 0.9 ETH
+        // user1 gets 1/4 of 2 ETH or 0.5 ETH
+        // user2 gets 1/4 of 2 ETH or 0.5 ETH
+        // this gets 1/2 of 2 ETH or 1 ETH
         uint256 user1Bal = address(user1).balance;
         uint256 user2Bal = address(user2).balance;
         uint256 user3Bal = address(user3).balance;
 
         user1.call_cash();
-        assertEq(user1Bal + 0.45 ether, address(user1).balance);
+        assertEq(user1Bal + 0.5 ether, address(user1).balance);
         user2.call_cash();
-        assertEq(user2Bal + 0.45 ether, address(user2).balance);
+        assertEq(user2Bal + 0.5 ether, address(user2).balance);
         user3.call_cash();
-        assertEq(user3Bal + 0.9 ether, address(user3).balance);
+        assertEq(user3Bal + 1 ether, address(user3).balance);
 
         assertTrue(!vault.auctionLive());
         assertTrue(vault.vaultClosed());

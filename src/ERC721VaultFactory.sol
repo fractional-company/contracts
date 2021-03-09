@@ -1,62 +1,44 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./OpenZeppelin/utils/Strings.sol";
+import "./OpenZeppelin/access/Ownable.sol";
 import "./OpenZeppelin/token/ERC721/ERC721.sol";
 import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
 
 import "./ERC721TokenVault.sol";
 
-contract VaultFactory {
-  using Strings for *;
-
+contract VaultFactory is Ownable {
+  /// @notice the number of ERC721 vaults
   uint256 public vaultCount;
+
+  /// @notice the mapping of vault number to vault contract
   mapping(uint256 => TokenVault) public vaults;
 
-  address payable public gov;
-  address payable public pendingGov;
-  uint256 public fee;
+  /// @notice a settings contract controlled by governance
+  address public settings;
 
   event Mint(address token, uint256 id, uint256 price);
-  event UpdateGov(address oldGov, address newGov);
-  event AcceptGov(address gov);
 
-  constructor() {
-    gov = payable(msg.sender);
+  constructor(address _settings) {
+    settings = _settings;
   }
 
-  function mint(address _token, uint256 _id, uint256 _reservePrice) external {
-    string memory name = IERC721Metadata(_token).name();
-    string memory id = _id.toString();
-    name = string(abi.encodePacked("Nibble - ", name, ":",  id));
-    TokenVault vault = new TokenVault(address(this), fee, _token, _id, msg.sender, _reservePrice, name, "NBBL");
+  /// @notice the function to mint a new vault
+  /// @param _name the desired name of the vault
+  /// @param _symbol the desired sumbol of the vault
+  /// @param _token the ERC721 token address fo the NFT
+  /// @param _id the uint256 ID of the token
+  /// @param _listPrice the initial price of the NFT
+  /// @return the ID of the vault
+  function mint(string memory _name, string memory _symbol, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee) external returns(uint256){
+    TokenVault vault = new TokenVault(settings, msg.sender, _token, _id, _supply, _listPrice, _fee, _name, _symbol);
 
     IERC721(_token).safeTransferFrom(msg.sender, address(vault), _id);
     
     vaults[vaultCount] = vault;
     vaultCount++;
-  }
 
-  function updateGov(address payable _gov) external {
-    require(msg.sender == gov, "update:not gov");
-    pendingGov = _gov;
-
-    emit UpdateGov(gov, pendingGov);
-  }
-
-  function acceptGov() external {
-    require(msg.sender == pendingGov, "accept:not new gov");
-    gov = pendingGov;
-    pendingGov = payable(address(0));
-
-    emit AcceptGov(gov);
-  }
-
-  function setFee(uint256 _fee) external {
-    // Max gov fee is 10%
-    require(_fee <= 100, "fee:fee is too high");
-    require(msg.sender == gov, "fee:not gov");
-    fee = _fee;
+    return vaultCount - 1;
   }
 
 }
