@@ -1,16 +1,27 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "./Interfaces/IWETH.sol";
+import "./OpenZeppelin/math/Math.sol";
 import "./OpenZeppelin/token/ERC20/ERC20.sol";
 import "./OpenZeppelin/token/ERC721/ERC721.sol";
 import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
+
 import "./Settings.sol";
 
 contract TokenVault is ERC20, ERC721Holder {
 
     /// -----------------------------------
+    /// -------- BASIC INFORMATION --------
+    /// -----------------------------------
+
+    /// @notice weth address
+    address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
+    /// -----------------------------------
     /// -------- TOKEN INFORMATION --------
     /// -----------------------------------
+
     /// @notice the ERC721 token address of the vault's token
     address public token;
 
@@ -20,6 +31,7 @@ contract TokenVault is ERC20, ERC721Holder {
     /// -------------------------------------
     /// -------- AUCTION INFORMATION --------
     /// -------------------------------------
+
     /// @notice the unix timestamp end time of the token auction
     uint256 public auctionEnd;
 
@@ -44,6 +56,7 @@ contract TokenVault is ERC20, ERC721Holder {
     /// -----------------------------------
     /// -------- VAULT INFORMATION --------
     /// -----------------------------------
+
     /// @notice the governance contract which gets paid in ETH
     address public settings;
 
@@ -65,6 +78,7 @@ contract TokenVault is ERC20, ERC721Holder {
     /// ------------------------
     /// -------- EVENTS --------
     /// ------------------------
+
     /// @notice An event emitted when a user updates their price
     event PriceUpdate(address user, uint price);
 
@@ -101,6 +115,15 @@ contract TokenVault is ERC20, ERC721Holder {
     /// -----------------------------------
     /// -------- CURATOR FUNCTIONS --------
     /// -----------------------------------
+
+    /// @notice allow curator to update the curator address
+    /// @param _curator the new curator
+    function updateCurator(address _curator) external {
+        require(msg.sender == curator, "update:not curator");
+
+        curator = _curator;
+    }
+
     /// @notice allow curator to update the base price
     /// @param _price the new base price
     function updateBasePrice(uint256 _price) external {
@@ -159,6 +182,10 @@ contract TokenVault is ERC20, ERC721Holder {
         _mint(govAddress, govMint);
     }
 
+    /// --------------------------------
+    /// -------- CORE FUNCTIONS --------
+    /// --------------------------------
+
     /// @notice a function for an end user to update their desired sale price
     /// @param _new the desired price in ETH
     function updateUserPrice(uint256 _new) external {
@@ -184,6 +211,15 @@ contract TokenVault is ERC20, ERC721Holder {
 
             // subtract senders votes and add receivers votes
             reservePrice = reservePrice - (_amount * fromPrice / totalSupply()) + (_amount * toPrice / totalSupply());
+
+            // make sure the reserve price is within safe bounds
+            if (reservePrice < basePrice) {
+                uint256 basePriceMin = basePrice * ISettings(settings).minReserveFactor() / 1000;
+                reservePrice = Math.max(reservePrice, basePriceMin);
+            } else if (reservePrice > basePrice) {
+                uint256 basePriceMax = basePrice * ISettings(settings).maxReserveFactor() / 1000;
+                reservePrice = Math.min(reservePrice, basePriceMax);
+            }
         }
     }
 
@@ -198,7 +234,6 @@ contract TokenVault is ERC20, ERC721Holder {
 
     /// @notice kick off an auction. Must send reservePrice in ETH
     function start() external payable {
-        // require(msg.sender == tx.origin, "bid:no contracts");
         require(!auctionLive && !vaultClosed, "start:no auction starts");
         require(msg.value >= reservePrice, "start:too low bid");
         
@@ -213,7 +248,6 @@ contract TokenVault is ERC20, ERC721Holder {
 
     /// @notice an external function to bid on purchasing the vaults NFT. The msg.value is the bid amount
     function bid() external payable {
-        // require(msg.sender == tx.origin, "bid:no contracts");
         uint256 increase = ISettings(settings).minBidIncrease() + 1000;
         require(msg.value >= livePrice * increase / 1000, "bid:too low bid");
         require(block.timestamp < auctionEnd, "bid:auction ended");
@@ -222,8 +256,8 @@ contract TokenVault is ERC20, ERC721Holder {
         if (auctionEnd - block.timestamp <= 15 minutes) {
             auctionEnd += 15 minutes;
         }
-        // Give back the last bidders money
-        winning.transfer(livePrice);
+
+        _sendETHOrWETH(winning, livePrice);
 
         livePrice = msg.value;
         winning = payable(msg.sender);
@@ -261,9 +295,21 @@ contract TokenVault is ERC20, ERC721Holder {
         require(bal > 0, "cash:no tokens to cash out");
         uint256 share = bal * address(this).balance / totalSupply();
         _burn(msg.sender, bal);
-        payable(msg.sender).transfer(share);
+
+        _sendETHOrWETH(payable(msg.sender), share);
 
         emit Cash(msg.sender, share);
+    }
+
+    /// @dev internal helper function to send ETH and WETH on failure
+    function _sendETHOrWETH(address who, uint256 amount) internal {
+        // try to send the winner ETH back
+        (bool success, ) = who.call{ value: amount }("");
+        // if transfer reverts, send them WETH
+        if (!success) {
+            IWETH(weth).deposit{value: amount}();
+            IWETH(weth).transfer(who, IWETH(weth).balanceOf(address(this)));
+        }
     }
 
 }
