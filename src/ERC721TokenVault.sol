@@ -112,6 +112,18 @@ contract TokenVault is ERC20, ERC721Holder {
         _updateUserPrice(_curator, _listPrice);
     }
 
+    /// -------------------------------
+    /// -------- GOV FUNCTIONS --------
+    /// -------------------------------
+
+    /// @notice allow governance to boot a bad actor curator
+    /// @param _curator the new curator
+    function kickCurator(address _curator) external {
+        require(msg.sender == Ownable(settings).owner(), "kick:not gov");
+
+        curator = _curator;
+    }
+
     /// -----------------------------------
     /// -------- CURATOR FUNCTIONS --------
     /// -----------------------------------
@@ -145,7 +157,7 @@ contract TokenVault is ERC20, ERC721Holder {
     /// @param _fee the new fee
     function updateFee(uint256 _fee) external {
         require(msg.sender == curator, "update:not curator");
-        require(_fee < ISettings(settings).maxCuratorFee(), "update:cannot increase fee this high");
+        require(_fee <= ISettings(settings).maxCuratorFee(), "update:cannot increase fee this high");
 
         _claimFees();
 
@@ -173,7 +185,6 @@ contract TokenVault is ERC20, ERC721Holder {
         uint256 govFee = ISettings(settings).governanceFee();
         currentAnnualFee = govFee * totalSupply() / 1000; 
         feePerSecond = currentAnnualFee / 31536000;
-        sinceLastClaim = block.timestamp - lastClaimed;
         uint256 govMint = sinceLastClaim * feePerSecond;
 
         lastClaimed = block.timestamp;
