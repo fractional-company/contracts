@@ -141,11 +141,11 @@ contract TokenVault is ERC20, ERC721Holder {
         auctionLength = _length;
     }
 
-    /// @notice allow the curator to lower their fee
+    /// @notice allow the curator to change their fee
     /// @param _fee the new fee
     function updateFee(uint256 _fee) external {
         require(msg.sender == curator, "update:not curator");
-        require(_fee < fee, "update:cannot increase fee");
+        require(_fee < ISettings(settings).maxCuratorFee(), "update:cannot increase fee this high");
 
         _claimFees();
 

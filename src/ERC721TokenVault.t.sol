@@ -89,6 +89,8 @@ contract VaultTest is DSTest, ERC721Holder {
 
         token = new TestERC721();
 
+        settings.addAllowedNFT(address(token));
+
         token.mint(address(this), 1);
 
         token.setApprovalForAll(address(factory), true);

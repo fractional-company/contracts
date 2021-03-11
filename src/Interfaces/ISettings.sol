@@ -7,6 +7,8 @@ interface ISettings {
 
     function minAuctionLength() external returns(uint256);
 
+    function maxCuratorFee() external returns(uint256);
+
     function governanceFee() external returns(uint256);
 
     function minBidIncrease() external returns(uint256);

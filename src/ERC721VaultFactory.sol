@@ -5,6 +5,7 @@ import "./OpenZeppelin/access/Ownable.sol";
 import "./OpenZeppelin/token/ERC721/ERC721.sol";
 import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
 
+import "./Settings.sol";
 import "./ERC721TokenVault.sol";
 
 contract VaultFactory is Ownable {
@@ -30,7 +31,8 @@ contract VaultFactory is Ownable {
   /// @param _id the uint256 ID of the token
   /// @param _listPrice the initial price of the NFT
   /// @return the ID of the vault
-  function mint(string memory _name, string memory _symbol, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee) external returns(uint256){
+  function mint(string memory _name, string memory _symbol, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee) external returns(uint256) {
+    require(ISettings(settings).allowedNFTs(_token), "mint:token not allowed");
     TokenVault vault = new TokenVault(settings, msg.sender, _token, _id, _supply, _listPrice, _fee, _name, _symbol);
 
     IERC721(_token).safeTransferFrom(msg.sender, address(vault), _id);

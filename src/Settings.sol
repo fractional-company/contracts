@@ -18,11 +18,14 @@ contract Settings is Ownable, ISettings {
     /// @notice the shortest an auction can ever be
     uint256 public constant minMinAuctionLength = 1 days;
 
-    /// @notice governance fee for auctions
+    /// @notice governance fee max
     uint256 public override governanceFee;
 
     /// @notice 10% fee is max
-    uint256 public constant maxFee = 100;
+    uint256 public constant maxGovFee = 100;
+
+    /// @notice max curator fee
+    uint256 public override maxCuratorFee;
 
     /// @notice the % bid increase required for a new bid
     uint256 public override minBidIncrease;
@@ -51,6 +54,8 @@ contract Settings is Ownable, ISettings {
 
     event UpdateGovernanceFee(uint256 _old, uint256 _new);
 
+    event UpdateCuratorFee(uint256 _old, uint256 _new);
+
     event UpdateMinBidIncrease(uint256 _old, uint256 _new);
 
     event UpdateMaxReserveFactor(uint256 _old, uint256 _new);
@@ -68,6 +73,7 @@ contract Settings is Ownable, ISettings {
         minReserveFactor = 200;  // 20%
         maxReserveFactor = 5000; // 500%
         minBidIncrease = 50;     // 5%
+        maxCuratorFee = 100;
     }
 
     function setMaxAuctionLength(uint256 _length) external onlyOwner {
@@ -89,11 +95,17 @@ contract Settings is Ownable, ISettings {
     }
 
     function setGovernanceFee(uint256 _fee) external onlyOwner {
-        require(_fee <= maxFee, "fee too high");
+        require(_fee <= maxGovFee, "fee too high");
 
         emit UpdateGovernanceFee(governanceFee, _fee);
 
         governanceFee = _fee;
+    }
+
+    function setMaxCuratorFee(uint256 _fee) external onlyOwner {
+        emit UpdateCuratorFee(governanceFee, _fee);
+
+        maxCuratorFee = _fee;
     }
 
     function setMinBidIncrease(uint256 _min) external onlyOwner {
