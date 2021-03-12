@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
 
-import "./ERC721VaultFactory.sol";
-import "./test/TestERC721.sol";
+import "../ERC721VaultFactory.sol";
+import "./TestERC721.sol";
 
 interface Hevm {
     function warp(uint256) external;

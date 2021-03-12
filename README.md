@@ -29,3 +29,4 @@ The function called when the auction timer is up and ended.
 The function called for token holders to cash out their share of the ETH used to purchase the underlying NFT.
 
 There is also some admin logic for the `curator` (user who initially deposited the NFT). They can reduce their fee, change the auction length, or update the base price. Alongside this, they are able to claim fees in the form of token supply inflation.
+
