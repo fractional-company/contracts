@@ -30,3 +30,13 @@ The function called for token holders to cash out their share of the ETH used to
 
 There is also some admin logic for the `curator` (user who initially deposited the NFT). They can reduce their fee, change the auction length, or update the base price. Alongside this, they are able to claim fees in the form of token supply inflation.
 
+## IndexERC721
+This is a single token ERC721 which is used to custody multiple ERC721 tokens. 
+#### depositERC721
+Anyone can deposit an ERC721 token into the contract
+#### withdrawERC721
+The token holder can withdraw any ERC721 tokens in the contract
+#### withdrawETH
+The token holder can withdraw any ETH in the contract
+#### withdrawERC20
+The token holder can withdraw any ERC20 token in the contract
