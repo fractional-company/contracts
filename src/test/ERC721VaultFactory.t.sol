@@ -20,10 +20,10 @@ interface Hevm {
 
 contract User {
 
-    VaultFactory public factory;
+    ERC721VaultFactory public factory;
 
     constructor(address _factory) {
-        factory = VaultFactory(_factory);
+        factory = ERC721VaultFactory(_factory);
     }
 
     // to be able to receive funds
@@ -35,7 +35,7 @@ contract User {
 contract VaultFactoryTest is DSTest {
     Hevm public hevm;
     
-    VaultFactory public factory;
+    ERC721VaultFactory public factory;
     TestERC721 public token;
 
     User public user1;

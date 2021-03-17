@@ -115,7 +115,7 @@ contract Curator {
 contract VaultTest is DSTest, ERC721Holder {
     Hevm public hevm;
     
-    VaultFactory public factory;
+    ERC721VaultFactory public factory;
     Settings public settings;
     TestERC721 public token;
     TokenVault public vault;
@@ -136,7 +136,7 @@ contract VaultTest is DSTest, ERC721Holder {
 
         settings.setGovernanceFee(10);
 
-        factory = new VaultFactory(address(settings));
+        factory = new ERC721VaultFactory(address(settings));
 
         token = new TestERC721();
 
