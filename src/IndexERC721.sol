@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./OpenZeppelin/utils/Counters.sol";
 import "./OpenZeppelin/token/ERC20/IERC20.sol";
 import "./OpenZeppelin/token/ERC721/ERC721.sol";
 import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
