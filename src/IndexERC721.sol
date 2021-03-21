@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./OpenZeppelin/utils/Counters.sol";
 import "./OpenZeppelin/token/ERC20/IERC20.sol";
 import "./OpenZeppelin/token/ERC721/ERC721.sol";
 import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
@@ -10,10 +9,6 @@ import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
  * Mint a single ERC721 which can hold NFTs
  */
 contract IndexERC721 is ERC721, ERC721Holder {
-    using Counters for Counters.Counter;
-
-    Counters.Counter private _tokenIdTracker;
-
     /// @notice mapping ERC721 address -> token ID -> token ID which owns the previous token ID
     mapping(address=>mapping(uint256=>uint256)) public tokenToIndexOwner;
 
