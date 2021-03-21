@@ -302,6 +302,7 @@ contract TokenVault is ERC20, ERC721Holder {
 
     /// @notice an external function to burn ERC20 tokens to receive ETH from ERC721 token purchase
     function cash() external {
+        require(vaultClosed, "cash:vault not closed yet");
         uint256 bal = balanceOf(msg.sender);
         require(bal > 0, "cash:no tokens to cash out");
         uint256 share = bal * address(this).balance / totalSupply();
