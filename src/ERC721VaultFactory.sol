@@ -18,7 +18,7 @@ contract ERC721VaultFactory is Ownable {
   /// @notice a settings contract controlled by governance
   address public settings;
 
-  event Mint(address token, uint256 id, uint256 price);
+  event Mint(address token, uint256 id, uint256 price, address vault, uint256 vaultId);
 
   constructor(address _settings) {
     settings = _settings;
@@ -36,6 +36,8 @@ contract ERC721VaultFactory is Ownable {
     require(ISettings(settings).allowedNFTs(_token), "mint:token not allowed");
     
     TokenVault vault = new TokenVault(settings, msg.sender, _token, _id, _supply, _listPrice, _fee, _name, _symbol);
+
+    emit Mint(_token, _id, _listPrice, address(vault), vaultCount);
 
     IERC721(_token).safeTransferFrom(msg.sender, address(vault), _id);
     
