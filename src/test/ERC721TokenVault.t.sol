@@ -295,15 +295,15 @@ contract VaultTest is DSTest, ERC721Holder {
 
         user1.call_cash();
         uint256 wethBal = IWETH(vault.weth()).balanceOf(address(user1));
-        assertEq(user1Bal + 0.5 ether, wethBal);
+        assertEq(user1Bal + 499425318811235702, wethBal);
 
         user2.call_cash();
         wethBal = IWETH(vault.weth()).balanceOf(address(user2));
-        assertEq(user2Bal + 0.5 ether, wethBal);
+        assertEq(user2Bal + 499425318811235702, wethBal);
 
         user3.call_cash();
         wethBal = IWETH(vault.weth()).balanceOf(address(user3));
-        assertEq(user3Bal + 1 ether, wethBal);
+        assertEq(user3Bal + 998850637622471404, wethBal);
 
         assertTrue(vault.auctionState() == TokenVault.State.ended);
     }

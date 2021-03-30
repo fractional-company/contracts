@@ -175,6 +175,8 @@ contract TokenVault is ERC20, ERC721Holder {
 
     /// @dev interal fuction to calculate and mint fees
     function _claimFees() internal {
+        require(auctionState != State.ended, "claim:cannot claim after auction ends");
+
         // get how much in fees the curator would make in a year
         uint256 currentAnnualFee = fee * totalSupply() / 1000; 
         // get how much that is per second;
@@ -314,6 +316,8 @@ contract TokenVault is ERC20, ERC721Holder {
     function end() external {
         require(auctionState == State.live, "end:vault has already closed");
         require(block.timestamp >= auctionEnd, "end:auction live");
+
+        _claimFees();
 
         // transfer erc721 to winner
         IERC721(token).safeTransferFrom(address(this), winning, id);
