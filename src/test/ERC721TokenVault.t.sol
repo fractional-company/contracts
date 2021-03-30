@@ -333,6 +333,13 @@ contract VaultTest is DSTest, ERC721Holder {
         assertEq(1.05 ether, wethBal);
     }
 
+    function testFail_notEnoughVoting() public {
+        // now only 24% of tokens are voting so we fail
+        vault.transfer(address(user1), 76e18);
+
+        user1.call_start(1.05 ether);
+    }
+
     receive() external payable {}
     
 }

@@ -279,6 +279,7 @@ contract TokenVault is ERC20, ERC721Holder {
     function start() external payable {
         require(auctionState == State.inactive, "start:no auction starts");
         require(msg.value >= reservePrice(), "start:too low bid");
+        require(votingTokens * 1000 / totalSupply() >= ISettings(settings).minVotePercentage(), "start:not enough voters");
         
         auctionEnd = block.timestamp + auctionLength;
         auctionState = State.live;

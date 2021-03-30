@@ -13,6 +13,8 @@ interface ISettings {
 
     function minBidIncrease() external returns(uint256);
 
+    function minVotePercentage() external returns(uint256);
+
     function maxReserveFactor() external returns(uint256);
 
     function minReserveFactor() external returns(uint256);
