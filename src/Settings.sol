@@ -36,6 +36,9 @@ contract Settings is Ownable, ISettings {
     /// @notice 1% bid increase is min
     uint256 public constant minMinBidIncrease = 10;
 
+    /// @notice the % of tokens required to be voting for an auction to start
+    uint256 public override minVotePercentage;
+
     /// @notice the max % increase over the initial 
     uint256 public override maxReserveFactor;
 
@@ -58,6 +61,8 @@ contract Settings is Ownable, ISettings {
 
     event UpdateMinBidIncrease(uint256 _old, uint256 _new);
 
+    event UpdateMinVotePercentage(uint256 _old, uint256 _new);
+
     event UpdateMaxReserveFactor(uint256 _old, uint256 _new);
 
     event UpdateMinReserveFactor(uint256 _old, uint256 _new);
@@ -74,6 +79,7 @@ contract Settings is Ownable, ISettings {
         maxReserveFactor = 5000; // 500%
         minBidIncrease = 50;     // 5%
         maxCuratorFee = 100;
+        minVotePercentage = 250; // 25%
     }
 
     function setMaxAuctionLength(uint256 _length) external onlyOwner {
@@ -115,6 +121,15 @@ contract Settings is Ownable, ISettings {
         emit UpdateMinBidIncrease(minBidIncrease, _min);
 
         minBidIncrease = _min;
+    }
+
+    function setMinVotePercentage(uint256 _min) external onlyOwner {
+        // 1000 is 100%
+        require(_min <= 1000, "min vote percentage too high");
+
+        emit UpdateMinVotePercentage(minVotePercentage, _min);
+
+        minVotePercentage = _min;
     }
 
     function setMaxReserveFactor(uint256 _factor) external onlyOwner {

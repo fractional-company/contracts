@@ -10,6 +10,7 @@ import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
 import "./Settings.sol";
 
 contract TokenVault is ERC20, ERC721Holder {
+    using Address for address;
 
     /// -----------------------------------
     /// -------- BASIC INFORMATION --------
@@ -38,11 +39,8 @@ contract TokenVault is ERC20, ERC721Holder {
     /// @notice the length of auctions
     uint256 public auctionLength;
 
-    /// @notice the price set by the initial lister, can be changed by governance
-    uint256 public basePrice;
-
-    /// @notice the current reserve price of the token
-    uint256 public reservePrice;
+    /// @notice reservePrice * votingTokens
+    uint256 public reserveTotal;
 
     /// @notice the current price of the token during an auction
     uint256 public livePrice;
@@ -50,8 +48,9 @@ contract TokenVault is ERC20, ERC721Holder {
     /// @notice the current user winning the token auction
     address payable public winning;
 
-    /// @notice a boolean to indicate if an auction is happening
-    bool public auctionLive;
+    enum State { inactive, live, ended, redeemed }
+
+    State public auctionState;
 
     /// -----------------------------------
     /// -------- VAULT INFORMATION --------
@@ -71,6 +70,9 @@ contract TokenVault is ERC20, ERC721Holder {
 
     /// @notice a boolean to indicate if the vault has closed
     bool public vaultClosed;
+
+    /// @notice the number of ownership tokens voting on the reserve price at any given time
+    uint256 public votingTokens;
 
     /// @notice a mapping of users to their desired token price
     mapping(address => uint256) public userPrices;
@@ -101,15 +103,25 @@ contract TokenVault is ERC20, ERC721Holder {
         settings = _settings;
         token = _token;
         id = _id;
-        basePrice = _listPrice;
-        reservePrice = _listPrice;
+        reserveTotal = _listPrice * _supply;
         auctionLength = 7 days;
         curator = _curator;
         fee = _fee;
         lastClaimed = block.timestamp;
+        votingTokens = _supply;
+
+        auctionState = State.inactive;
 
         _mint(_curator, _supply);
-        _updateUserPrice(_curator, _listPrice);
+        userPrices[_curator] = _listPrice;
+    }
+
+    /// --------------------------------
+    /// -------- VIEW FUNCTIONS --------
+    /// --------------------------------
+
+    function reservePrice() public view returns(uint256) {
+        return reserveTotal / votingTokens;
     }
 
     /// -------------------------------
@@ -134,14 +146,6 @@ contract TokenVault is ERC20, ERC721Holder {
         require(msg.sender == curator, "update:not curator");
 
         curator = _curator;
-    }
-
-    /// @notice allow curator to update the base price
-    /// @param _price the new base price
-    function updateBasePrice(uint256 _price) external {
-        require(msg.sender == curator, "update:not curator");
-
-        basePrice = _price;
     }
 
     /// @notice allow curator to update the auction length
@@ -171,6 +175,8 @@ contract TokenVault is ERC20, ERC721Holder {
 
     /// @dev interal fuction to calculate and mint fees
     function _claimFees() internal {
+        require(auctionState != State.ended, "claim:cannot claim after auction ends");
+
         // get how much in fees the curator would make in a year
         uint256 currentAnnualFee = fee * totalSupply() / 1000; 
         // get how much that is per second;
@@ -200,13 +206,45 @@ contract TokenVault is ERC20, ERC721Holder {
     /// @notice a function for an end user to update their desired sale price
     /// @param _new the desired price in ETH
     function updateUserPrice(uint256 _new) external {
-        require(!auctionLive, "update:auction live cannot update price");
+        require(auctionState == State.inactive, "update:auction live cannot update price");
         uint256 old = userPrices[msg.sender];
+        require(_new != old, "update:not an update");
         uint256 weight = balanceOf(msg.sender);
 
-        _updateUserPrice(msg.sender, _new);
+        // they are the only one voting
+        if (weight == votingTokens && old != 0) {
+            reserveTotal = weight * _new;
+        }
+        // previously they were not voting
+        else if (old == 0) {
+            uint256 averageReserve = reserveTotal / votingTokens;
 
-        reservePrice = reservePrice - (weight * old / totalSupply()) + (weight * _new / totalSupply());
+            uint256 reservePriceMin = averageReserve * ISettings(settings).minReserveFactor() / 1000;
+            require(_new >= reservePriceMin, "update:reserve price too low");
+            uint256 reservePriceMax = averageReserve * ISettings(settings).maxReserveFactor() / 1000;
+            require(_new <= reservePriceMax, "update:reserve price too high");
+
+            votingTokens += weight;
+            reserveTotal += weight * _new;
+        } 
+        // they no longer want to vote
+        else if (_new == 0) {
+            votingTokens -= weight;
+            reserveTotal -= weight * old;
+        } 
+        // they are updating their vote
+        else {
+            uint256 averageReserve = (reserveTotal - (old * weight)) / (votingTokens - weight);
+
+            uint256 reservePriceMin = averageReserve * ISettings(settings).minReserveFactor() / 1000;
+            require(_new >= reservePriceMin, "update:reserve price too low");
+            uint256 reservePriceMax = averageReserve * ISettings(settings).maxReserveFactor() / 1000;
+            require(_new <= reservePriceMax, "update:reserve price too high");
+
+            reserveTotal = reserveTotal + (weight * _new) - (weight * old);
+        }
+
+        userPrices[msg.sender] = _new;
     }
 
     /// @notice an internal function used to update sender and receivers price on token transfer
@@ -214,42 +252,39 @@ contract TokenVault is ERC20, ERC721Holder {
     /// @param _to the ERC20 token receiver
     /// @param _amount the ERC20 token amount
     function _beforeTokenTransfer(address _from, address _to, uint256 _amount) internal virtual override {
-        if (_from != address(0) && !auctionLive && !vaultClosed) {
+        if (_from != address(0) && auctionState == State.inactive) {
             uint256 fromPrice = userPrices[_from];
-            uint256 toPrice = userPrices[_to] == 0 ? reservePrice : userPrices[_to];
+            uint256 toPrice = userPrices[_to];
 
-            _updateUserPrice(_to, toPrice);
-
-            // subtract senders votes and add receivers votes
-            reservePrice = reservePrice - (_amount * fromPrice / totalSupply()) + (_amount * toPrice / totalSupply());
-
-            // make sure the reserve price is within safe bounds
-            if (reservePrice < basePrice) {
-                uint256 basePriceMin = basePrice * ISettings(settings).minReserveFactor() / 1000;
-                reservePrice = Math.max(reservePrice, basePriceMin);
-            } else if (reservePrice > basePrice) {
-                uint256 basePriceMax = basePrice * ISettings(settings).maxReserveFactor() / 1000;
-                reservePrice = Math.min(reservePrice, basePriceMax);
+            // only do something if users have different reserve price
+            if (toPrice != fromPrice) {
+                // new holder is not a voter
+                if (toPrice == 0) {
+                    // get the average reserve price ignoring the senders amount
+                    votingTokens -= _amount;
+                    reserveTotal -= _amount * fromPrice;
+                }
+                // old holder is not a voter
+                else if (fromPrice == 0) {
+                    votingTokens += _amount;
+                    reserveTotal += _amount * toPrice;
+                }
+                // both holders are voters
+                else {
+                    reserveTotal = reserveTotal + (_amount * toPrice) - (_amount * fromPrice);
+                }
             }
         }
     }
 
-    /// @notice an internal function to update a users price and emit an event
-    /// @param _user the user whos price is being update
-    /// @param _price the price the user has chosen in ETH
-    function _updateUserPrice(address _user, uint256 _price) internal {
-        userPrices[_user] = _price;
-
-        emit PriceUpdate(_user, _price);
-    }
-
     /// @notice kick off an auction. Must send reservePrice in ETH
     function start() external payable {
-        require(!auctionLive && !vaultClosed, "start:no auction starts");
-        require(msg.value >= reservePrice, "start:too low bid");
+        require(auctionState == State.inactive, "start:no auction starts");
+        require(msg.value >= reservePrice(), "start:too low bid");
+        require(votingTokens * 1000 / totalSupply() >= ISettings(settings).minVotePercentage(), "start:not enough voters");
         
         auctionEnd = block.timestamp + auctionLength;
-        auctionLive = true;
+        auctionState = State.live;
 
         livePrice = msg.value;
         winning = payable(msg.sender);
@@ -259,6 +294,7 @@ contract TokenVault is ERC20, ERC721Holder {
 
     /// @notice an external function to bid on purchasing the vaults NFT. The msg.value is the bid amount
     function bid() external payable {
+        require(auctionState == State.live, "bid:auction is not live");
         uint256 increase = ISettings(settings).minBidIncrease() + 1000;
         require(msg.value >= livePrice * increase / 1000, "bid:too low bid");
         require(block.timestamp < auctionEnd, "bid:auction ended");
@@ -278,31 +314,35 @@ contract TokenVault is ERC20, ERC721Holder {
 
     /// @notice an external function to end an auction after the timer has run out
     function end() external {
-        require(!vaultClosed, "end:vault has already closed");
+        require(auctionState == State.live, "end:vault has already closed");
         require(block.timestamp >= auctionEnd, "end:auction live");
+
+        _claimFees();
 
         // transfer erc721 to winner
         IERC721(token).safeTransferFrom(address(this), winning, id);
 
-        auctionLive = false;
-        vaultClosed = true;
+        auctionState = State.ended;
 
-        emit Won(winning, reservePrice);
+        emit Won(winning, livePrice);
     }
 
     /// @notice an external function to burn all ERC20 tokens to receive the ERC721 token
     function redeem() external {
+        require(auctionState == State.inactive, "redeem:no redeeming");
         _burn(msg.sender, totalSupply());
+        
         // transfer erc721 to redeemer
         IERC721(token).safeTransferFrom(address(this), msg.sender, id);
-        vaultClosed = true;
+        
+        auctionState = State.redeemed;
 
         emit Redeem(msg.sender);
     }
 
     /// @notice an external function to burn ERC20 tokens to receive ETH from ERC721 token purchase
     function cash() external {
-        require(vaultClosed, "cash:vault not closed yet");
+        require(auctionState == State.ended, "cash:vault not closed yet");
         uint256 bal = balanceOf(msg.sender);
         require(bal > 0, "cash:no tokens to cash out");
         uint256 share = bal * address(this).balance / totalSupply();
@@ -315,12 +355,12 @@ contract TokenVault is ERC20, ERC721Holder {
 
     /// @dev internal helper function to send ETH and WETH on failure
     function _sendETHOrWETH(address who, uint256 amount) internal {
-        // try to send the winner ETH back
-        (bool success, ) = who.call{ value: amount }("");
-        // if transfer reverts, send them WETH
-        if (!success) {
+        // contracts get bet WETH because they can be mean
+        if (who.isContract()) {
             IWETH(weth).deposit{value: amount}();
             IWETH(weth).transfer(who, IWETH(weth).balanceOf(address(this)));
+        } else {
+            who.call{ value: amount }("");
         }
     }
 
