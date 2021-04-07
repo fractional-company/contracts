@@ -211,8 +211,12 @@ contract TokenVault is ERC20, ERC721Holder {
         require(_new != old, "update:not an update");
         uint256 weight = balanceOf(msg.sender);
 
+        if (votingTokens == 0) {
+            votingTokens = weight;
+            reserveTotal = weight * _new;
+        }
         // they are the only one voting
-        if (weight == votingTokens && old != 0) {
+        else if (weight == votingTokens && old != 0) {
             reserveTotal = weight * _new;
         }
         // previously they were not voting
