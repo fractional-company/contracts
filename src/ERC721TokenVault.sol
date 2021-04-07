@@ -364,7 +364,7 @@ contract TokenVault is ERC20, ERC721Holder {
             IWETH(weth).deposit{value: amount}();
             IWETH(weth).transfer(who, IWETH(weth).balanceOf(address(this)));
         } else {
-            who.call{ value: amount }("");
+            payable(who).transfer(amount);
         }
     }
 
