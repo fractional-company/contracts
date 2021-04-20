@@ -249,6 +249,8 @@ contract TokenVault is ERC20, ERC721Holder {
         }
 
         userPrices[msg.sender] = _new;
+
+        emit PriceUpdate(msg.sender, _new);
     }
 
     /// @notice an internal function used to update sender and receivers price on token transfer
