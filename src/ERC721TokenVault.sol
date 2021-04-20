@@ -287,7 +287,7 @@ contract TokenVault is ERC20, ERC721Holder {
     function start() external payable {
         require(auctionState == State.inactive, "start:no auction starts");
         require(msg.value >= reservePrice(), "start:too low bid");
-        require(votingTokens * 1000 / totalSupply() >= ISettings(settings).minVotePercentage(), "start:not enough voters");
+        require(votingTokens * 1000 >= ISettings(settings).minVotePercentage() * totalSupply(), "start:not enough voters");
         
         auctionEnd = block.timestamp + auctionLength;
         auctionState = State.live;
@@ -302,7 +302,7 @@ contract TokenVault is ERC20, ERC721Holder {
     function bid() external payable {
         require(auctionState == State.live, "bid:auction is not live");
         uint256 increase = ISettings(settings).minBidIncrease() + 1000;
-        require(msg.value >= livePrice * increase / 1000, "bid:too low bid");
+        require(msg.value * 1000 >= livePrice * increase, "bid:too low bid");
         require(block.timestamp < auctionEnd, "bid:auction ended");
 
         // If bid is within 15 minutes of auction end, extend auction
