@@ -1,14 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./OpenZeppelin/access/Ownable.sol";
 import "./OpenZeppelin/token/ERC721/ERC721.sol";
 import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
 
 import "./Settings.sol";
 import "./ERC721TokenVault.sol";
 
-contract ERC721VaultFactory is Ownable {
+contract ERC721VaultFactory {
   /// @notice the number of ERC721 vaults
   uint256 public vaultCount;
 
