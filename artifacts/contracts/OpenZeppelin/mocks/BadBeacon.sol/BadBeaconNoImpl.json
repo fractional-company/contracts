@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "BadBeaconNoImpl",
+  "sourceName": "contracts/OpenZeppelin/mocks/BadBeacon.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea26469706673582212209374f0ae4681534e3b077cc95684281148e554b739f7ec2981de534e517b7fd464736f6c63430008000033",
+  "deployedBytecode": "0x6080604052600080fdfea26469706673582212209374f0ae4681534e3b077cc95684281148e554b739f7ec2981de534e517b7fd464736f6c63430008000033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

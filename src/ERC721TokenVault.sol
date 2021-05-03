@@ -82,22 +82,22 @@ contract TokenVault is ERC20, ERC721Holder {
     /// ------------------------
 
     /// @notice An event emitted when a user updates their price
-    event PriceUpdate(address user, uint price);
+    event PriceUpdate(address indexed user, uint price);
 
     /// @notice An event emitted when an auction starts
-    event Start(address buyer, uint price);
+    event Start(address indexed buyer, uint price);
 
     /// @notice An event emitted when a bid is made
-    event Bid(address buyer, uint price);
+    event Bid(address indexed buyer, uint price);
 
     /// @notice An event emitted when an auction is won
-    event Won(address buyer, uint price);
+    event Won(address indexed buyer, uint price);
 
     /// @notice An event emitted when someone redeems all tokens for the NFT
-    event Redeem(address redeemer);
+    event Redeem(address indexed redeemer);
 
     /// @notice An event emitted when someone cashes in ERC20 tokens for ETH from an ERC721 token sale
-    event Cash(address owner, uint256 shares);
+    event Cash(address indexed owner, uint256 shares);
 
     constructor(address _settings, address _curator, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee, string memory _name, string memory _symbol) ERC20(_name, _symbol) {
         settings = _settings;

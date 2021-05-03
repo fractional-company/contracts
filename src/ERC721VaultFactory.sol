@@ -18,7 +18,7 @@ contract ERC721VaultFactory is Ownable {
   /// @notice a settings contract controlled by governance
   address public settings;
 
-  event Mint(address token, uint256 id, uint256 price, address vault, uint256 vaultId);
+  event Mint(address indexed token, uint256 id, uint256 price, address vault, uint256 vaultId);
 
   constructor(address _settings) {
     settings = _settings;

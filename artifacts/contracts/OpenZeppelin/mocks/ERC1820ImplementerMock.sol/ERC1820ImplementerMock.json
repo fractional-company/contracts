@@ -1,0 +1,53 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "ERC1820ImplementerMock",
+  "sourceName": "contracts/OpenZeppelin/mocks/ERC1820ImplementerMock.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "interfaceHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "canImplementInterfaceForAddress",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "interfaceHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "registerInterfaceForAddress",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b506101ad806100206000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c8063249cb3fa1461003b5780635536e45d14610064575b600080fd5b61004e610049366004610127565b610079565b60405161005b919061016e565b60405180910390f35b610077610072366004610127565b6100de565b005b60008281526020818152604080832073ffffffffffffffffffffffffffffffffffffffff8516845290915281205460ff166100b55760006100d7565b7fa2ef4600d742022d532d4747cb3547474667d6f13804902513b2ec01c848f4b45b9392505050565b6100e882826100ec565b5050565b60009182526020828152604080842073ffffffffffffffffffffffffffffffffffffffff90931684529190529020805460ff19166001179055565b60008060408385031215610139578182fd5b82359150602083013573ffffffffffffffffffffffffffffffffffffffff81168114610163578182fd5b809150509250929050565b9081526020019056fea2646970667358221220cefcc8d0a8565d65224355b726ee0c6cf768a55756fed4c1f17dd686229b220264736f6c63430008000033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100365760003560e01c8063249cb3fa1461003b5780635536e45d14610064575b600080fd5b61004e610049366004610127565b610079565b60405161005b919061016e565b60405180910390f35b610077610072366004610127565b6100de565b005b60008281526020818152604080832073ffffffffffffffffffffffffffffffffffffffff8516845290915281205460ff166100b55760006100d7565b7fa2ef4600d742022d532d4747cb3547474667d6f13804902513b2ec01c848f4b45b9392505050565b6100e882826100ec565b5050565b60009182526020828152604080842073ffffffffffffffffffffffffffffffffffffffff90931684529190529020805460ff19166001179055565b60008060408385031215610139578182fd5b82359150602083013573ffffffffffffffffffffffffffffffffffffffff81168114610163578182fd5b809150509250929050565b9081526020019056fea2646970667358221220cefcc8d0a8565d65224355b726ee0c6cf768a55756fed4c1f17dd686229b220264736f6c63430008000033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
