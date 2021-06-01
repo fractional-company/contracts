@@ -11,13 +11,13 @@ import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
  */
 contract IndexERC721 is ERC721, ERC721Holder {
 
-    event Deposit(address token, uint256 tokenId, address from);
+    event Deposit(address indexed token, uint256 tokenId, address indexed from);
 
-    event Withdraw(address token, uint256 tokenId, address to);
+    event Withdraw(address indexed token, uint256 tokenId, address indexed to);
 
-    event WithdrawETH(address who);
+    event WithdrawETH(address indexed who);
 
-    event WithdrawERC20(address token, address who);
+    event WithdrawERC20(address indexed token, address indexed who);
 
     constructor(string memory name, string memory symbol) ERC721(name, symbol) {
         _mint(msg.sender, 0);

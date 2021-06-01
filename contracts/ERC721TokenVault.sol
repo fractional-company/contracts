@@ -82,22 +82,22 @@ contract TokenVault is ERC20, ERC721Holder {
     /// ------------------------
 
     /// @notice An event emitted when a user updates their price
-    event PriceUpdate(address user, uint price);
+    event PriceUpdate(address indexed user, uint price);
 
     /// @notice An event emitted when an auction starts
-    event Start(address buyer, uint price);
+    event Start(address indexed buyer, uint price);
 
     /// @notice An event emitted when a bid is made
-    event Bid(address buyer, uint price);
+    event Bid(address indexed buyer, uint price);
 
     /// @notice An event emitted when an auction is won
-    event Won(address buyer, uint price);
+    event Won(address indexed buyer, uint price);
 
     /// @notice An event emitted when someone redeems all tokens for the NFT
-    event Redeem(address redeemer);
+    event Redeem(address indexed redeemer);
 
     /// @notice An event emitted when someone cashes in ERC20 tokens for ETH from an ERC721 token sale
-    event Cash(address owner, uint256 shares);
+    event Cash(address indexed owner, uint256 shares);
 
     constructor(address _settings, address _curator, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee, string memory _name, string memory _symbol) ERC20(_name, _symbol) {
         settings = _settings;
@@ -121,7 +121,7 @@ contract TokenVault is ERC20, ERC721Holder {
     /// --------------------------------
 
     function reservePrice() public view returns(uint256) {
-        return reserveTotal / votingTokens;
+        return votingTokens == 0 ? 0 : reserveTotal / votingTokens;
     }
 
     /// -------------------------------
@@ -211,8 +211,12 @@ contract TokenVault is ERC20, ERC721Holder {
         require(_new != old, "update:not an update");
         uint256 weight = balanceOf(msg.sender);
 
+        if (votingTokens == 0) {
+            votingTokens = weight;
+            reserveTotal = weight * _new;
+        }
         // they are the only one voting
-        if (weight == votingTokens && old != 0) {
+        else if (weight == votingTokens && old != 0) {
             reserveTotal = weight * _new;
         }
         // previously they were not voting
@@ -245,6 +249,8 @@ contract TokenVault is ERC20, ERC721Holder {
         }
 
         userPrices[msg.sender] = _new;
+
+        emit PriceUpdate(msg.sender, _new);
     }
 
     /// @notice an internal function used to update sender and receivers price on token transfer
@@ -281,7 +287,7 @@ contract TokenVault is ERC20, ERC721Holder {
     function start() external payable {
         require(auctionState == State.inactive, "start:no auction starts");
         require(msg.value >= reservePrice(), "start:too low bid");
-        require(votingTokens * 1000 / totalSupply() >= ISettings(settings).minVotePercentage(), "start:not enough voters");
+        require(votingTokens * 1000 >= ISettings(settings).minVotePercentage() * totalSupply(), "start:not enough voters");
         
         auctionEnd = block.timestamp + auctionLength;
         auctionState = State.live;
@@ -296,7 +302,7 @@ contract TokenVault is ERC20, ERC721Holder {
     function bid() external payable {
         require(auctionState == State.live, "bid:auction is not live");
         uint256 increase = ISettings(settings).minBidIncrease() + 1000;
-        require(msg.value >= livePrice * increase / 1000, "bid:too low bid");
+        require(msg.value * 1000 >= livePrice * increase, "bid:too low bid");
         require(block.timestamp < auctionEnd, "bid:auction ended");
 
         // If bid is within 15 minutes of auction end, extend auction
@@ -360,7 +366,7 @@ contract TokenVault is ERC20, ERC721Holder {
             IWETH(weth).deposit{value: amount}();
             IWETH(weth).transfer(who, IWETH(weth).balanceOf(address(this)));
         } else {
-            who.call{ value: amount }("");
+            payable(who).transfer(amount);
         }
     }
 

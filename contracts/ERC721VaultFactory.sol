@@ -1,14 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./OpenZeppelin/access/Ownable.sol";
 import "./OpenZeppelin/token/ERC721/ERC721.sol";
 import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
 
 import "./Settings.sol";
 import "./ERC721TokenVault.sol";
 
-contract ERC721VaultFactory is Ownable {
+contract ERC721VaultFactory {
   /// @notice the number of ERC721 vaults
   uint256 public vaultCount;
 
@@ -18,7 +17,7 @@ contract ERC721VaultFactory is Ownable {
   /// @notice a settings contract controlled by governance
   address public settings;
 
-  event Mint(address token, uint256 id, uint256 price, address vault, uint256 vaultId);
+  event Mint(address indexed token, uint256 id, uint256 price, address vault, uint256 vaultId);
 
   constructor(address _settings) {
     settings = _settings;
@@ -32,9 +31,6 @@ contract ERC721VaultFactory is Ownable {
   /// @param _listPrice the initial price of the NFT
   /// @return the ID of the vault
   function mint(string memory _name, string memory _symbol, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee) external returns(uint256) {
-    // can only mint an NFT approved by governance
-    require(ISettings(settings).allowedNFTs(_token), "mint:token not allowed");
-    
     TokenVault vault = new TokenVault(settings, msg.sender, _token, _id, _supply, _listPrice, _fee, _name, _symbol);
 
     emit Mint(_token, _id, _listPrice, address(vault), vaultCount);
