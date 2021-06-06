@@ -121,7 +121,7 @@ contract TokenVault is ERC20, ERC721Holder {
     /// --------------------------------
 
     function reservePrice() public view returns(uint256) {
-        return reserveTotal / votingTokens;
+        return votingTokens == 0 ? 0 : reserveTotal / votingTokens;
     }
 
     /// -------------------------------
@@ -310,7 +310,7 @@ contract TokenVault is ERC20, ERC721Holder {
             auctionEnd += 15 minutes;
         }
 
-        _sendETHOrWETH(winning, livePrice);
+        _sendWETH(winning, livePrice);
 
         livePrice = msg.value;
         winning = payable(msg.sender);
@@ -357,6 +357,12 @@ contract TokenVault is ERC20, ERC721Holder {
         _sendETHOrWETH(payable(msg.sender), share);
 
         emit Cash(msg.sender, share);
+    }
+
+    /// @dev internal helper function to send ETH and WETH on failure
+    function _sendWETH(address who, uint256 amount) internal {
+        IWETH(weth).deposit{value: amount}();
+        IWETH(weth).transfer(who, IWETH(weth).balanceOf(address(this)));
     }
 
     /// @dev internal helper function to send ETH and WETH on failure
