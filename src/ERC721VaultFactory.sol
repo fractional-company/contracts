@@ -1,13 +1,16 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "./OpenZeppelin/access/Ownable.sol";
+import "./OpenZeppelin/utils/Pausable.sol";
+
 import "./OpenZeppelin/token/ERC721/ERC721.sol";
 import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
 
 import "./Settings.sol";
 import "./ERC721TokenVault.sol";
 
-contract ERC721VaultFactory {
+contract ERC721VaultFactory is Ownable, Pausable {
   /// @notice the number of ERC721 vaults
   uint256 public vaultCount;
 
@@ -30,10 +33,7 @@ contract ERC721VaultFactory {
   /// @param _id the uint256 ID of the token
   /// @param _listPrice the initial price of the NFT
   /// @return the ID of the vault
-  function mint(string memory _name, string memory _symbol, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee) external returns(uint256) {
-    // can only mint an NFT approved by governance
-    require(ISettings(settings).allowedNFTs(_token), "mint:token not allowed");
-    
+  function mint(string memory _name, string memory _symbol, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee) external whenNotPaused returns(uint256) {
     TokenVault vault = new TokenVault(settings, msg.sender, _token, _id, _supply, _listPrice, _fee, _name, _symbol);
 
     emit Mint(_token, _id, _listPrice, address(vault), vaultCount);
@@ -44,6 +44,14 @@ contract ERC721VaultFactory {
     vaultCount++;
 
     return vaultCount - 1;
+  }
+
+  function pause() external onlyOwner {
+    _pause();
+  }
+
+  function unpause() external onlyOwner {
+    _unpause();
   }
 
 }
