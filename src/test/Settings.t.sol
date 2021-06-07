@@ -110,19 +110,5 @@ contract SettingsTest is DSTest {
     function test_setFeeReceiver() public {
         settings.setFeeReceiver(payable(address(this)));
     }
-
-    function test_addAllowedNFT() public {
-        settings.addAllowedNFT(address(token));
-        assertTrue(!settings.allowedNFTs(address(token2)));
-        settings.addAllowedNFT(address(token2));
-        assertTrue(settings.allowedNFTs(address(token)));
-        assertTrue(settings.allowedNFTs(address(token2)));
-    }
-
-    function test_removeAllowedNFT() public {
-        settings.addAllowedNFT(address(token));
-        settings.removeAllowedNFT(address(token));
-        assertTrue(!settings.allowedNFTs(address(token)));
-    }
     
 }

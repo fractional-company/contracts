@@ -21,6 +21,4 @@ interface ISettings {
 
     function feeReceiver() external returns(address payable);
 
-    function allowedNFTs(address) external returns(bool);
-
 }
