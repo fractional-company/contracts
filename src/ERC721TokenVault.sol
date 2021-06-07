@@ -326,7 +326,7 @@ contract TokenVault is ERC20, ERC721Holder {
         _claimFees();
 
         // transfer erc721 to winner
-        IERC721(token).safeTransferFrom(address(this), winning, id);
+        IERC721(token).transferFrom(address(this), winning, id);
 
         auctionState = State.ended;
 
@@ -339,7 +339,7 @@ contract TokenVault is ERC20, ERC721Holder {
         _burn(msg.sender, totalSupply());
         
         // transfer erc721 to redeemer
-        IERC721(token).safeTransferFrom(address(this), msg.sender, id);
+        IERC721(token).transferFrom(address(this), msg.sender, id);
         
         auctionState = State.redeemed;
 
