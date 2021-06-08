@@ -32,7 +32,7 @@ contract IndexERC721Test is DSTest, ERC721Holder {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
-        index = new IndexERC721("test", "TEST");
+        index = new IndexERC721();
 
         token1 = new TestERC721();
 

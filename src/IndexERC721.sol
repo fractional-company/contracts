@@ -19,7 +19,7 @@ contract IndexERC721 is ERC721, ERC721Holder {
 
     event WithdrawERC20(address indexed token, address indexed who);
 
-    constructor(string memory name, string memory symbol) ERC721(name, symbol) {
+    constructor() ERC721("NFT Basket", "NFTB") {
         _mint(msg.sender, 0);
     }
 
