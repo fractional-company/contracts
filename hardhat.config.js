@@ -29,6 +29,10 @@ module.exports = {
     }
   },
   networks: {
+    mainnet: {
+      url: process.env.MAINNET,
+      accounts: [process.env.PRIVATE_KEY]
+    },
     goerli: {
       url: process.env.INFURA,
       accounts: [process.env.PRIVATE_KEY]

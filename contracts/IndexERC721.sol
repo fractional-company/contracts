@@ -19,7 +19,7 @@ contract IndexERC721 is ERC721, ERC721Holder {
 
     event WithdrawERC20(address indexed token, address indexed who);
 
-    constructor(string memory name, string memory symbol) ERC721(name, symbol) {
+    constructor() ERC721("NFT Basket", "NFTB") {
         _mint(msg.sender, 0);
     }
 
@@ -27,6 +27,7 @@ contract IndexERC721 is ERC721, ERC721Holder {
     /// @param _token the address of the NFT you are depositing
     /// @param _tokenId the ID of the NFT you are depositing
     function depositERC721(address _token, uint256 _tokenId) external {
+        require(_token != address(this), "can't deposit self");
         IERC721(_token).safeTransferFrom(msg.sender, address(this), _tokenId);
 
         emit Deposit(_token, _tokenId, msg.sender);

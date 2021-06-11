@@ -48,9 +48,6 @@ contract Settings is Ownable, ISettings {
     /// @notice the address who receives auction fees
     address payable public override feeReceiver;
 
-    /// @notice the list of NFTs allowed to be minted against
-    mapping(address => bool) public override allowedNFTs;
-
     event UpdateMaxAuctionLength(uint256 _old, uint256 _new);
 
     event UpdateMinAuctionLength(uint256 _old, uint256 _new);
@@ -69,17 +66,15 @@ contract Settings is Ownable, ISettings {
 
     event UpdateFeeReceiver(address _old, address _new);
 
-    event UpdateAllowedNFT(address _nft, bool _allowed);
-
     constructor() {
         maxAuctionLength = 2 weeks;
         minAuctionLength = 3 days;
         feeReceiver = payable(msg.sender);
-        minReserveFactor = 200;  // 20%
-        maxReserveFactor = 5000; // 500%
+        minReserveFactor = 500;  // 50%
+        maxReserveFactor = 2000; // 200%
         minBidIncrease = 50;     // 5%
         maxCuratorFee = 100;
-        minVotePercentage = 250; // 25%
+        minVotePercentage = 500; // 50%
     }
 
     function setMaxAuctionLength(uint256 _length) external onlyOwner {
@@ -154,18 +149,6 @@ contract Settings is Ownable, ISettings {
         emit UpdateFeeReceiver(feeReceiver, _receiver);
 
         feeReceiver = _receiver;
-    }
-
-    function addAllowedNFT(address _nft) external onlyOwner {
-        allowedNFTs[_nft] = true;
-
-        emit UpdateAllowedNFT(_nft, true);
-    }
-
-    function removeAllowedNFT(address _nft) external onlyOwner {
-        allowedNFTs[_nft] = false;
-
-        emit UpdateAllowedNFT(_nft, false);
     }
 
 }

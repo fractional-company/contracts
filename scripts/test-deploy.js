@@ -29,8 +29,6 @@ async function main() {
     const Settings = await ethers.getContractFactory("Settings");
     const settings = await Settings.deploy();
 
-    await settings.addAllowedNFT(token.address);
-
     console.log(`> npx hardhat verify --network goerli ${settings.address}`);
 
     const Factory = await ethers.getContractFactory("ERC721VaultFactory");
