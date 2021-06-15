@@ -143,7 +143,7 @@ contract VaultTest is DSTest, ERC721Holder {
         token.mint(address(this), 1);
 
         token.setApprovalForAll(address(factory), true);
-        factory.mint("testName", "TEST", address(token), 1, 100e18, 1 ether, 50);
+        factory.mint("testName", "TEST", address(token), 1, 100e18, 99, 50);
 
         vault = factory.vaults(0);
 
@@ -156,7 +156,7 @@ contract VaultTest is DSTest, ERC721Holder {
         user3 = new User(address(vault));
         user4 = new UserNoETH(address(vault));
 
-        payable(address(user1)).transfer(10 ether);
+        payable(address(user1)).transfer(100 ether);
         payable(address(user2)).transfer(10 ether);
         payable(address(user3)).transfer(10 ether);
         payable(address(user4)).transfer(10 ether);
@@ -170,7 +170,7 @@ contract VaultTest is DSTest, ERC721Holder {
         temp.mint(address(this), 1);
 
         temp.setApprovalForAll(address(factory), true);
-        factory.mint("testName2", "TEST2", address(temp), 1, 100e18, 1 ether, 50);
+        factory.mint("testName2", "TEST2", address(temp), 1, 100e18, 99, 50);
     }
 
     function testFail_pause() public {
@@ -180,7 +180,7 @@ contract VaultTest is DSTest, ERC721Holder {
         temp.mint(address(this), 1);
 
         temp.setApprovalForAll(address(factory), true);
-        factory.mint("testName2", "TEST2", address(temp), 1, 100e18, 1 ether, 50);
+        factory.mint("testName2", "TEST2", address(temp), 1, 100e18, 99, 50);
     }
 
     /// -------------------------------
@@ -247,143 +247,157 @@ contract VaultTest is DSTest, ERC721Holder {
     /// --------------------------------
 
     function test_initialReserve() public {
-        assertEq(vault.reservePrice(), 1 ether);
+        (,uint256 price) = vault.reservePrice();
+        assertEq(price, 99 ether);
     }
 
     function test_reservePriceTransfer() public {
         // reserve price here should not change
-        vault.transfer(address(user1), 50e18);
-        assertEq(vault.reservePrice(), 1 ether);
-        assertEq(vault.votingTokens(), 50e18);
+        vault.transfer(address(user1), 49e18);
+        (uint256 voting,uint256 price) = vault.reservePrice();
+        assertEq(price, 99 ether);
+        assertEq(voting, 51e18);
 
         assertEq(vault.userPrices(address(user1)), 0);
 
-        // reserve price should update to 1.5 ether
-        user1.call_updatePrice(2 ether);
-        assertEq(vault.reservePrice(), 1.5 ether);
+        // reserve price should not change but voting will
+        user1.call_updatePrice(101);
+        (voting, price) = vault.reservePrice();
+        assertEq(price, 99 ether);
+        assertEq(voting, 100e18);
 
-        // now user 1 sends 2/5 their tokens to user 2
-        // reserve price is now 1 * 5 + 2 * 3 / 8 = 1.375
-        user1.call_transfer(address(user2), 20e18);
-        assertEq(vault.reservePrice(), 1.375 ether);
+        vault.transfer(address(user2), 25e18);
+        user2.call_updatePrice(100);
+        (voting, price) = vault.reservePrice();
+        assertEq(price, 100 ether);
+        assertEq(voting, 100e18);
 
         // now they are voting the same as user1 was so we go back to 1.5 eth
-        user2.call_updatePrice(2 ether);
-        assertEq(vault.reservePrice(), 1.5 ether);
+        user2.call_updatePrice(200);
+        (voting, price) = vault.reservePrice();
+        assertEq(price, 101 ether);
+        assertEq(voting, 100e18);
 
         // send all tokens back to first user
         // their reserve price is 1 ether and they hold all tokens
-        user1.call_transfer(address(this), 30e18);
-        user2.call_transfer(address(this), 20e18);
-        assertEq(vault.reservePrice(), 1 ether);
+        user1.call_transfer(address(this), 49e18);
+        user2.call_transfer(address(this), 25e18);
+        (voting, price) = vault.reservePrice();
+        assertEq(price, 99 ether);
+        assertEq(voting, 100e18);
     }
 
-    function test_bid() public {
-        vault.transfer(address(user1), 25e18);
-        user1.call_updatePrice(1 ether);
-        vault.transfer(address(user2), 25e18);
-        user2.call_updatePrice(1 ether);
-        vault.transfer(address(user3), 50e18);
-        user3.call_updatePrice(1 ether);
-
-        user1.call_start(1.05 ether);
-
+    function test_start() public {
+        user1.call_start(99 ether);
         assertTrue(vault.auctionState() == TokenVault.State.live);
-
-        uint256 bal = IWETH(vault.weth()).balanceOf(address(user1));
-        user2.call_bid(1.5 ether);
-        assertEq(bal + 1.05 ether, IWETH(vault.weth()).balanceOf(address(user1)));
-
-        bal = IWETH(vault.weth()).balanceOf(address(user2));
-        user1.call_bid(2 ether);
-        assertEq(bal + 1.5 ether, IWETH(vault.weth()).balanceOf(address(user2)));
-
-        hevm.warp(block.timestamp + 7 days);
-
-        vault.end();
-
-        assertEq(token.balanceOf(address(user1)), 1);
-
-        // auction has ended. Now lets get all token holders their WETH since they are contracts
-        // user1 gets 1/4 of 2 ETH or 0.5 ETH
-        // user2 gets 1/4 of 2 ETH or 0.5 ETH
-        // this gets 1/2 of 2 ETH or 1 ETH
-        uint256 user1Bal = IWETH(vault.weth()).balanceOf(address(user1));
-        uint256 user2Bal = IWETH(vault.weth()).balanceOf(address(user2));
-        uint256 user3Bal = IWETH(vault.weth()).balanceOf(address(user3));
-
-        user1.call_cash();
-        uint256 wethBal = IWETH(vault.weth()).balanceOf(address(user1));
-        assertEq(user1Bal + 499425318811235702, wethBal);
-
-        user2.call_cash();
-        wethBal = IWETH(vault.weth()).balanceOf(address(user2));
-        assertEq(user2Bal + 499425318811235702, wethBal);
-
-        user3.call_cash();
-        wethBal = IWETH(vault.weth()).balanceOf(address(user3));
-        assertEq(user3Bal + 998850637622471404, wethBal);
-
-        assertTrue(vault.auctionState() == TokenVault.State.ended);
     }
 
-    function test_redeem() public {
-        vault.redeem();
+    // function test_bid() public {
+    //     vault.transfer(address(user1), 25e18);
+    //     user1.call_updatePrice(1 ether);
+    //     vault.transfer(address(user2), 25e18);
+    //     user2.call_updatePrice(1 ether);
+    //     vault.transfer(address(user3), 50e18);
+    //     user3.call_updatePrice(1 ether);
 
-        assertTrue(vault.auctionState() == TokenVault.State.redeemed);
+    //     user1.call_start(1.05 ether);
 
-        assertEq(token.balanceOf(address(this)), 1);
-    }
+    //     assertTrue(vault.auctionState() == TokenVault.State.live);
 
-    function test_cantGetEth() public {
-        vault.transfer(address(user1), 25000000000000000000);
-        user1.call_updatePrice(1 ether);
-        vault.transfer(address(user2), 25000000000000000000);
-        user2.call_updatePrice(1 ether);
-        vault.transfer(address(user4), 50000000000000000000);
-        user4.call_updatePrice(1 ether);
+    //     uint256 bal = IWETH(vault.weth()).balanceOf(address(user1));
+    //     user2.call_bid(1.5 ether);
+    //     assertEq(bal + 1.05 ether, IWETH(vault.weth()).balanceOf(address(user1)));
 
-        user4.call_start(1.05 ether);
-        user4.setCanReceive(false);
-        assertTrue(vault.auctionState() == TokenVault.State.live);
+    //     bal = IWETH(vault.weth()).balanceOf(address(user2));
+    //     user1.call_bid(2 ether);
+    //     assertEq(bal + 1.5 ether, IWETH(vault.weth()).balanceOf(address(user2)));
 
-        user2.call_bid(1.5 ether);
-        uint256 wethBal = IWETH(vault.weth()).balanceOf(address(user4));
-        assertEq(1.05 ether, wethBal);
-    }
+    //     hevm.warp(block.timestamp + 7 days);
 
-    function testFail_notEnoughVoting() public {
-        // now only 24% of tokens are voting so we fail
-        vault.transfer(address(user1), 76e18);
+    //     vault.end();
 
-        user1.call_start(1.05 ether);
-    }
+    //     assertEq(token.balanceOf(address(user1)), 1);
 
-    function test_listPriceZero() public {
-        token.mint(address(this), 2);
+    //     // auction has ended. Now lets get all token holders their WETH since they are contracts
+    //     // user1 gets 1/4 of 2 ETH or 0.5 ETH
+    //     // user2 gets 1/4 of 2 ETH or 0.5 ETH
+    //     // this gets 1/2 of 2 ETH or 1 ETH
+    //     uint256 user1Bal = IWETH(vault.weth()).balanceOf(address(user1));
+    //     uint256 user2Bal = IWETH(vault.weth()).balanceOf(address(user2));
+    //     uint256 user3Bal = IWETH(vault.weth()).balanceOf(address(user3));
 
-        factory.mint("testName", "TEST", address(token), 2, 100e18, 0, 50);
+    //     user1.call_cash();
+    //     uint256 wethBal = IWETH(vault.weth()).balanceOf(address(user1));
+    //     assertEq(user1Bal + 499425318811235702, wethBal);
 
-        vault = factory.vaults(1);
+    //     user2.call_cash();
+    //     wethBal = IWETH(vault.weth()).balanceOf(address(user2));
+    //     assertEq(user2Bal + 499425318811235702, wethBal);
 
-        assertEq(vault.votingTokens(), 0);
-    }
+    //     user3.call_cash();
+    //     wethBal = IWETH(vault.weth()).balanceOf(address(user3));
+    //     assertEq(user3Bal + 998850637622471404, wethBal);
 
-    function testFail_listPriceZeroNoAuction() public {
-        token.mint(address(this), 2);
+    //     assertTrue(vault.auctionState() == TokenVault.State.ended);
+    // }
 
-        factory.mint("testName", "TEST", address(token), 2, 100e18, 0, 50);
+    // function test_redeem() public {
+    //     vault.redeem();
 
-        vault = factory.vaults(1);
+    //     assertTrue(vault.auctionState() == TokenVault.State.redeemed);
 
-        User userTemp = new User(address(vault));
+    //     assertEq(token.balanceOf(address(this)), 1);
+    // }
 
-        userTemp.call_start(1.05 ether);
-    }
+    // function test_cantGetEth() public {
+    //     vault.transfer(address(user1), 25000000000000000000);
+    //     user1.call_updatePrice(1 ether);
+    //     vault.transfer(address(user2), 25000000000000000000);
+    //     user2.call_updatePrice(1 ether);
+    //     vault.transfer(address(user4), 50000000000000000000);
+    //     user4.call_updatePrice(1 ether);
 
-    function test_transfer() public {
-        vault.transfer(address(user1), 25e18);
-    }
+    //     user4.call_start(1.05 ether);
+    //     user4.setCanReceive(false);
+    //     assertTrue(vault.auctionState() == TokenVault.State.live);
+
+    //     user2.call_bid(1.5 ether);
+    //     uint256 wethBal = IWETH(vault.weth()).balanceOf(address(user4));
+    //     assertEq(1.05 ether, wethBal);
+    // }
+
+    // function testFail_notEnoughVoting() public {
+    //     // now only 24% of tokens are voting so we fail
+    //     vault.transfer(address(user1), 76e18);
+
+    //     user1.call_start(1.05 ether);
+    // }
+
+    // function test_listPriceZero() public {
+    //     token.mint(address(this), 2);
+
+    //     factory.mint("testName", "TEST", address(token), 2, 100e18, 0, 50);
+
+    //     vault = factory.vaults(1);
+
+    //     assertEq(vault.votingTokens(), 0);
+    // }
+
+    // function testFail_listPriceZeroNoAuction() public {
+    //     token.mint(address(this), 2);
+
+    //     factory.mint("testName", "TEST", address(token), 2, 100e18, 0, 50);
+
+    //     vault = factory.vaults(1);
+
+    //     User userTemp = new User(address(vault));
+
+    //     userTemp.call_start(1.05 ether);
+    // }
+
+    // function test_transfer() public {
+    //     vault.transfer(address(user1), 25e18);
+    // }
 
     receive() external payable {}
     

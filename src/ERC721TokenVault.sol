@@ -39,9 +39,6 @@ contract TokenVault is ERC20, ERC721Holder {
     /// @notice the length of auctions
     uint256 public auctionLength;
 
-    /// @notice reservePrice * votingTokens
-    uint256 public reserveTotal;
-
     /// @notice the current price of the token during an auction
     uint256 public livePrice;
 
@@ -71,11 +68,16 @@ contract TokenVault is ERC20, ERC721Holder {
     /// @notice a boolean to indicate if the vault has closed
     bool public vaultClosed;
 
-    /// @notice the number of ownership tokens voting on the reserve price at any given time
-    uint256 public votingTokens;
-
-    /// @notice a mapping of users to their desired token price
+    /// @notice a mapping of users to their desired token price based on ticks
     mapping(address => uint256) public userPrices;
+
+    mapping(uint256 => uint256) public votes;
+
+    uint256 constant public tickSize = 1 ether;
+
+    uint256 public lowerBound;
+
+    uint256 public ticks = 500;
 
     /// ------------------------
     /// -------- EVENTS --------
@@ -112,17 +114,30 @@ contract TokenVault is ERC20, ERC721Holder {
 
         _mint(_curator, _supply);
 
-        votingTokens = _listPrice == 0 ? 0 : _supply;
-        reserveTotal = _listPrice * _supply;
+        votes[_listPrice] = _supply;
         userPrices[_curator] = _listPrice;
+
+        lowerBound = 50;
     }
 
     /// --------------------------------
     /// -------- VIEW FUNCTIONS --------
     /// --------------------------------
 
-    function reservePrice() public view returns(uint256) {
-        return votingTokens == 0 ? 0 : reserveTotal / votingTokens;
+    function reservePrice() public view returns(uint256 totalVotes, uint256 price) {
+        totalVotes = 0;
+        for (uint i = lowerBound; i < lowerBound + ticks; i++) {
+            totalVotes += votes[i];
+        }
+        uint256 currentVotes = 0;
+        uint256 votesNeeded = totalVotes / 2;
+        for (uint j = lowerBound; j < lowerBound + ticks; j++) {
+            currentVotes += votes[j];
+            if (currentVotes >= votesNeeded) {
+                price = j * tickSize;
+                break;
+            }
+        }
     }
 
     /// -------------------------------
@@ -212,42 +227,8 @@ contract TokenVault is ERC20, ERC721Holder {
         require(_new != old, "update:not an update");
         uint256 weight = balanceOf(msg.sender);
 
-        if (votingTokens == 0) {
-            votingTokens = weight;
-            reserveTotal = weight * _new;
-        }
-        // they are the only one voting
-        else if (weight == votingTokens && old != 0) {
-            reserveTotal = weight * _new;
-        }
-        // previously they were not voting
-        else if (old == 0) {
-            uint256 averageReserve = reserveTotal / votingTokens;
-
-            uint256 reservePriceMin = averageReserve * ISettings(settings).minReserveFactor() / 1000;
-            require(_new >= reservePriceMin, "update:reserve price too low");
-            uint256 reservePriceMax = averageReserve * ISettings(settings).maxReserveFactor() / 1000;
-            require(_new <= reservePriceMax, "update:reserve price too high");
-
-            votingTokens += weight;
-            reserveTotal += weight * _new;
-        } 
-        // they no longer want to vote
-        else if (_new == 0) {
-            votingTokens -= weight;
-            reserveTotal -= weight * old;
-        } 
-        // they are updating their vote
-        else {
-            uint256 averageReserve = (reserveTotal - (old * weight)) / (votingTokens - weight);
-
-            uint256 reservePriceMin = averageReserve * ISettings(settings).minReserveFactor() / 1000;
-            require(_new >= reservePriceMin, "update:reserve price too low");
-            uint256 reservePriceMax = averageReserve * ISettings(settings).maxReserveFactor() / 1000;
-            require(_new <= reservePriceMax, "update:reserve price too high");
-
-            reserveTotal = reserveTotal + (weight * _new) - (weight * old);
-        }
+        votes[old] -= weight;
+        votes[_new] += weight;
 
         userPrices[msg.sender] = _new;
 
@@ -265,21 +246,8 @@ contract TokenVault is ERC20, ERC721Holder {
 
             // only do something if users have different reserve price
             if (toPrice != fromPrice) {
-                // new holder is not a voter
-                if (toPrice == 0) {
-                    // get the average reserve price ignoring the senders amount
-                    votingTokens -= _amount;
-                    reserveTotal -= _amount * fromPrice;
-                }
-                // old holder is not a voter
-                else if (fromPrice == 0) {
-                    votingTokens += _amount;
-                    reserveTotal += _amount * toPrice;
-                }
-                // both holders are voters
-                else {
-                    reserveTotal = reserveTotal + (_amount * toPrice) - (_amount * fromPrice);
-                }
+                votes[fromPrice] -= _amount;
+                votes[toPrice] += _amount;
             }
         }
     }
@@ -287,7 +255,8 @@ contract TokenVault is ERC20, ERC721Holder {
     /// @notice kick off an auction. Must send reservePrice in ETH
     function start() external payable {
         require(auctionState == State.inactive, "start:no auction starts");
-        require(msg.value >= reservePrice(), "start:too low bid");
+        (uint256 votingTokens, uint256 price) = reservePrice();
+        require(msg.value >= price, "start:too low bid");
         require(votingTokens * 1000 >= ISettings(settings).minVotePercentage() * totalSupply(), "start:not enough voters");
         
         auctionEnd = block.timestamp + auctionLength;
