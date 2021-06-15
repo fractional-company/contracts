@@ -103,16 +103,17 @@ contract TokenVault is ERC20, ERC721Holder {
         settings = _settings;
         token = _token;
         id = _id;
-        reserveTotal = _listPrice * _supply;
         auctionLength = 7 days;
         curator = _curator;
         fee = _fee;
         lastClaimed = block.timestamp;
-        votingTokens = _supply;
 
         auctionState = State.inactive;
 
         _mint(_curator, _supply);
+
+        votingTokens = _listPrice == 0 ? 0 : _supply;
+        reserveTotal = _listPrice * _supply;
         userPrices[_curator] = _listPrice;
     }
 

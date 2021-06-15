@@ -359,6 +359,32 @@ contract VaultTest is DSTest, ERC721Holder {
         user1.call_start(1.05 ether);
     }
 
+    function test_listPriceZero() public {
+        token.mint(address(this), 2);
+
+        factory.mint("testName", "TEST", address(token), 2, 100e18, 0, 50);
+
+        vault = factory.vaults(1);
+
+        assertEq(vault.votingTokens(), 0);
+    }
+
+    function testFail_listPriceZeroNoAuction() public {
+        token.mint(address(this), 2);
+
+        factory.mint("testName", "TEST", address(token), 2, 100e18, 0, 50);
+
+        vault = factory.vaults(1);
+
+        User userTemp = new User(address(vault));
+
+        userTemp.call_start(1.05 ether);
+    }
+
+    function test_transfer() public {
+        vault.transfer(address(user1), 25e18);
+    }
+
     receive() external payable {}
     
 }
