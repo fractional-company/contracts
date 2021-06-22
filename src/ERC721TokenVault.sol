@@ -2,16 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "./Interfaces/IWETH.sol";
-import "./OpenZeppelin/math/Math.sol";
 import "./OpenZeppelin/token/ERC20/ERC20.sol";
-import "./OpenZeppelin/token/ERC721/ERC721.sol";
+import "./OpenZeppelin/token/ERC721/IERC721.sol";
 import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
 
 import "./Settings.sol";
 
 contract TokenVault is ERC20, ERC721Holder {
-    using Address for address;
-
     /// -----------------------------------
     /// -------- BASIC INFORMATION --------
     /// -----------------------------------
@@ -37,7 +34,10 @@ contract TokenVault is ERC20, ERC721Holder {
     uint256 public auctionEnd;
 
     /// @notice the length of auctions
-    uint256 public auctionLength;
+    uint256 public auctionLength = 7 days;
+
+    /// @notice the minimum bid increase
+    uint256 public minimumBid = 5; // 5%
 
     /// @notice the current price of the token during an auction
     uint256 public livePrice;
@@ -54,13 +54,13 @@ contract TokenVault is ERC20, ERC721Holder {
     /// -----------------------------------
 
     /// @notice the governance contract which gets paid in ETH
-    address public settings;
+    address public immutable settings;
 
     /// @notice the address who initially deposited the NFT
     address public curator;
 
     /// @notice the AUM fee paid to the curator yearly. 3 decimals. ie. 100 = 10%
-    uint256 public fee;
+    uint256 public immutable fee;
 
     /// @notice the last timestamp where fees were claimed
     uint256 public lastClaimed;
@@ -73,11 +73,11 @@ contract TokenVault is ERC20, ERC721Holder {
 
     mapping(uint256 => uint256) public votes;
 
-    uint256 constant public tickSize = 1 ether;
+    uint256 immutable public tickSize;
 
     uint256 public lowerBound;
 
-    uint256 public ticks = 500;
+    uint256 public constant TICKS = 500;
 
     /// ------------------------
     /// -------- EVENTS --------
@@ -101,23 +101,24 @@ contract TokenVault is ERC20, ERC721Holder {
     /// @notice An event emitted when someone cashes in ERC20 tokens for ETH from an ERC721 token sale
     event Cash(address indexed owner, uint256 shares);
 
-    constructor(address _settings, address _curator, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee, string memory _name, string memory _symbol) ERC20(_name, _symbol) {
+    constructor(address _settings, address _curator, address _token, uint256 _id, uint256 _supply, uint256 _tickSize, uint256 _tickIndexMedian, uint256 _fee, string memory _name, string memory _symbol) ERC20(_name, _symbol) {
+        require(_tickIndexMedian > 250, "too low");
+
         settings = _settings;
         token = _token;
         id = _id;
-        auctionLength = 7 days;
         curator = _curator;
         fee = _fee;
+        tickSize = _tickSize;
+        lowerBound = _tickIndexMedian - 250;
+
         lastClaimed = block.timestamp;
 
         auctionState = State.inactive;
 
+        votes[0] = _supply;
+
         _mint(_curator, _supply);
-
-        votes[_listPrice] = _supply;
-        userPrices[_curator] = _listPrice;
-
-        lowerBound = 50;
     }
 
     /// --------------------------------
@@ -126,30 +127,18 @@ contract TokenVault is ERC20, ERC721Holder {
 
     function reservePrice() public view returns(uint256 totalVotes, uint256 price) {
         totalVotes = 0;
-        for (uint i = lowerBound; i < lowerBound + ticks; i++) {
+        for (uint i = lowerBound; i < lowerBound + TICKS; i++) {
             totalVotes += votes[i];
         }
         uint256 currentVotes = 0;
         uint256 votesNeeded = totalVotes / 2;
-        for (uint j = lowerBound; j < lowerBound + ticks; j++) {
+        for (uint j = lowerBound; j < lowerBound + TICKS; j++) {
             currentVotes += votes[j];
             if (currentVotes >= votesNeeded) {
                 price = j * tickSize;
                 break;
             }
         }
-    }
-
-    /// -------------------------------
-    /// -------- GOV FUNCTIONS --------
-    /// -------------------------------
-
-    /// @notice allow governance to boot a bad actor curator
-    /// @param _curator the new curator
-    function kickCurator(address _curator) external {
-        require(msg.sender == Ownable(settings).owner(), "kick:not gov");
-
-        curator = _curator;
     }
 
     /// -----------------------------------
@@ -162,26 +151,6 @@ contract TokenVault is ERC20, ERC721Holder {
         require(msg.sender == curator, "update:not curator");
 
         curator = _curator;
-    }
-
-    /// @notice allow curator to update the auction length
-    /// @param _length the new base price
-    function updateAuctionLength(uint256 _length) external {
-        require(msg.sender == curator, "update:not curator");
-        require(_length >= ISettings(settings).minAuctionLength() && _length <= ISettings(settings).maxAuctionLength(), "update:invalid auction length");
-
-        auctionLength = _length;
-    }
-
-    /// @notice allow the curator to change their fee
-    /// @param _fee the new fee
-    function updateFee(uint256 _fee) external {
-        require(msg.sender == curator, "update:not curator");
-        require(_fee <= ISettings(settings).maxCuratorFee(), "update:cannot increase fee this high");
-
-        _claimFees();
-
-        fee = _fee;
     }
 
     /// @notice external function to claim fees for the curator and governance
@@ -324,7 +293,7 @@ contract TokenVault is ERC20, ERC721Holder {
         uint256 share = bal * address(this).balance / totalSupply();
         _burn(msg.sender, bal);
 
-        _sendETHOrWETH(payable(msg.sender), share);
+        _sendWETH(payable(msg.sender), share);
 
         emit Cash(msg.sender, share);
     }
@@ -333,17 +302,6 @@ contract TokenVault is ERC20, ERC721Holder {
     function _sendWETH(address who, uint256 amount) internal {
         IWETH(weth).deposit{value: amount}();
         IWETH(weth).transfer(who, IWETH(weth).balanceOf(address(this)));
-    }
-
-    /// @dev internal helper function to send ETH and WETH on failure
-    function _sendETHOrWETH(address who, uint256 amount) internal {
-        // contracts get bet WETH because they can be mean
-        if (who.isContract()) {
-            IWETH(weth).deposit{value: amount}();
-            IWETH(weth).transfer(who, IWETH(weth).balanceOf(address(this)));
-        } else {
-            payable(who).transfer(amount);
-        }
     }
 
 }
