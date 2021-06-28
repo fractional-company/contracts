@@ -2,9 +2,7 @@
 pragma solidity 0.8.5;
 
 import "./Interfaces/IWETH.sol";
-
 import "./OpenZeppelin/token/ERC721/IERC721.sol";
-
 import "./Settings.sol";
 import "./VaultStorage.sol";
 
@@ -31,12 +29,11 @@ contract VaultLogic is VaultStorage {
     /// @notice An event emitted when someone cashes in ERC20 tokens for ETH from an ERC721 token sale
     event Cash(address indexed owner, uint256 shares);
 
+    /// @notice An event emitted when a token is transfered
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
+
+    /// @notice An event emitted when a token changes approval
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 
     /// --------------------------------
     /// -------- VIEW FUNCTIONS --------

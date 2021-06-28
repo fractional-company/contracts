@@ -2,12 +2,13 @@
 pragma solidity 0.8.5;
 
 import "./OpenZeppelin/token/ERC721/IERC721.sol";
-
+import "./OpenZeppelin/access/Ownable.sol";
+import "./OpenZeppelin/utils/Pausable.sol";
 import "./VaultProxy.sol";
 import "./VaultLogic.sol";
 import "./VaultStorage.sol";
 
-contract VaultFactory {
+contract VaultFactory is Ownable, Pausable {
 
   struct TokenParameters{
     string name;
@@ -29,7 +30,6 @@ contract VaultFactory {
   address public immutable logic;
   address public immutable settings;
 
-
   event Mint(address indexed token, uint256 id, uint256 price, address vault);
 
   constructor(address _logic, address _settings) {
@@ -42,9 +42,11 @@ contract VaultFactory {
   /// @param _symbol the desired sumbol of the vault
   /// @param _token the ERC721 token address fo the NFT
   /// @param _id the uint256 ID of the token
+  /// @param _supply the total supply of the ERC20 token
   /// @param _listPrice the initial price of the NFT
+  /// @param _fee the desired curator fee for the vault
   /// @return proxy the address of the vault
-  function mint(string memory _name, string memory _symbol, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee) external returns(address proxy) {
+  function mint(string memory _name, string memory _symbol, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee) external whenNotPaused returns(address proxy) {
     tokenParams = TokenParameters({
       name: _name,
       symbol: _symbol,
@@ -67,6 +69,14 @@ contract VaultFactory {
     IERC721(_token).safeTransferFrom(msg.sender, proxy, _id);
 
     emit Mint(_token, _id, _listPrice, proxy);
+  }
+
+  function pause() external onlyOwner {
+    _pause();
+  }
+
+  function unpause() external onlyOwner {
+    _unpause();
   }
 
 }
