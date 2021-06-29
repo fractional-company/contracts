@@ -165,6 +165,27 @@ contract VaultTest is DSTest, ERC721Holder {
         payable(address(user4)).transfer(10 ether);
     }
 
+    function test_pause() public {
+        factory.pause();
+        factory.unpause();
+        TestERC721 temp = new TestERC721();
+
+        temp.mint(address(this), 1);
+
+        temp.setApprovalForAll(address(factory), true);
+        factory.mint("testName2", "TEST2", address(temp), 1, 100e18, 1 ether, 50);
+    }
+
+    function testFail_pause() public {
+        factory.pause();
+        TestERC721 temp = new TestERC721();
+
+        temp.mint(address(this), 1);
+
+        temp.setApprovalForAll(address(factory), true);
+        factory.mint("testName2", "TEST2", address(temp), 1, 100e18, 1 ether, 50);
+    }
+
     /// -----------------------------------
     /// -------- CURATOR FUNCTIONS --------
     /// -----------------------------------
