@@ -145,7 +145,7 @@ contract VaultTest is DSTest, ERC721Holder {
         token.setApprovalForAll(address(factory), true);
         factory.mint("testName", "TEST", address(token), 1, 100e18, 1 ether, 50);
 
-        vault = factory.vaults(0);
+        vault = TokenVault(factory.vaults(0));
 
         // create a curator account
         curator = new Curator(address(factory));
@@ -364,7 +364,7 @@ contract VaultTest is DSTest, ERC721Holder {
 
         factory.mint("testName", "TEST", address(token), 2, 100e18, 0, 50);
 
-        vault = factory.vaults(1);
+        vault = TokenVault(factory.vaults(1));
 
         assertEq(vault.votingTokens(), 0);
     }
@@ -374,7 +374,7 @@ contract VaultTest is DSTest, ERC721Holder {
 
         factory.mint("testName", "TEST", address(token), 2, 100e18, 0, 50);
 
-        vault = factory.vaults(1);
+        vault = TokenVault(factory.vaults(1));
 
         User userTemp = new User(address(vault));
 
