@@ -18,14 +18,6 @@ interface Hevm {
     ) external;
 }
 
-contract User is ERC721Holder {
-    
-    function call_withdraw(address payable _index, address _token, uint256 _id) public {
-        IndexERC721(_index).withdrawERC721(_token, _id);
-    }
-
-}
-
 /// @author andy8052
 /// @title Tests for the NFT index
 contract IndexERC721Test is DSTest, ERC721Holder {
@@ -82,12 +74,6 @@ contract IndexERC721Test is DSTest, ERC721Holder {
         index.withdrawETH();
 
         assertEq(address(this).balance, bal);
-    }
-
-    function testFail_withraw() public {
-        User user = new User();
-        index.depositERC721(address(token1), 1);
-        user.call_withdraw(payable(address(index)), address(token1), 1);
     }
 
     receive() external payable {}

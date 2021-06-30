@@ -4,10 +4,8 @@ pragma solidity ^0.8.0;
 import "ds-test/test.sol";
 
 import "../Settings.sol";
-import "../VaultFactory.sol";
-import "../VaultLogic.sol";
-import "../VaultStorage.sol";
-import "../VaultProxy.sol";
+import "../ERC721VaultFactory.sol";
+import "../ERC721TokenVault.sol";
 import "./TestERC721.sol";
 
 interface Hevm {
@@ -24,10 +22,10 @@ interface Hevm {
 
 contract User is ERC721Holder {
 
-    VaultLogic public vault;
+    TokenVault public vault;
 
     constructor(address _vault) {
-        vault = VaultLogic(_vault);
+        vault = TokenVault(_vault);
     }
     
     function call_transfer(address _guy, uint256 _amount) public {
@@ -58,10 +56,10 @@ contract UserNoETH is ERC721Holder {
 
     bool public canReceive = true;
 
-    VaultLogic public vault;
+    TokenVault public vault;
 
     constructor(address _vault) {
-        vault = VaultLogic(_vault);
+        vault = TokenVault(_vault);
     }
     
     function call_transfer(address _guy, uint256 _amount) public {
@@ -94,19 +92,19 @@ contract UserNoETH is ERC721Holder {
 
 
 contract Curator {
-    VaultLogic public vault;
+    TokenVault public vault;
 
     constructor(address _vault) {
-        vault = VaultLogic(_vault);
+        vault = TokenVault(_vault);
     }
 
     function call_updateCurator(address _who) public {
         vault.updateCurator(_who);
     }
 
-    // function call_kickCurator(address _who) public {
-    //     vault.kickCurator(_who);
-    // }
+    function call_kickCurator(address _who) public {
+        vault.kickCurator(_who);
+    }
 
     // to be able to receive funds
     receive() external payable {} // solhint-disable-line no-empty-blocks
@@ -117,11 +115,10 @@ contract Curator {
 contract VaultTest is DSTest, ERC721Holder {
     Hevm public hevm;
     
-    VaultFactory public factory;
-    VaultLogic public logic;
+    ERC721VaultFactory public factory;
     Settings public settings;
     TestERC721 public token;
-    VaultLogic public vault;
+    TokenVault public vault;
 
     User public user1;
     User public user2;
@@ -139,16 +136,16 @@ contract VaultTest is DSTest, ERC721Holder {
 
         settings.setGovernanceFee(10);
 
-        logic = new VaultLogic();
-
-        factory = new VaultFactory(address(logic), address(settings));
+        factory = new ERC721VaultFactory(address(settings));
 
         token = new TestERC721();
 
         token.mint(address(this), 1);
 
         token.setApprovalForAll(address(factory), true);
-        vault = VaultLogic(factory.mint("testName", "TEST", address(token), 1, 100e18, 1 ether, 50));
+        factory.mint("testName", "TEST", address(token), 1, 100e18, 1 ether, 50);
+
+        vault = factory.vaults(0);
 
         // create a curator account
         curator = new Curator(address(factory));
@@ -184,6 +181,21 @@ contract VaultTest is DSTest, ERC721Holder {
 
         temp.setApprovalForAll(address(factory), true);
         factory.mint("testName2", "TEST2", address(temp), 1, 100e18, 1 ether, 50);
+    }
+
+    /// -------------------------------
+    /// -------- GOV FUNCTIONS --------
+    /// -------------------------------
+
+    function test_kickCurator() public {
+        vault.updateCurator(address(curator));
+        assertTrue(vault.curator() == address(curator));
+        vault.kickCurator(address(this));
+        assertTrue(vault.curator() == address(this));
+    }
+
+    function testFail_kickCurator() public {
+        curator.call_kickCurator(address(curator));
     }
 
     /// -----------------------------------
@@ -276,7 +288,7 @@ contract VaultTest is DSTest, ERC721Holder {
 
         user1.call_start(1.05 ether);
 
-        assertTrue(vault.auctionState() == VaultStorage.State.live);
+        assertTrue(vault.auctionState() == TokenVault.State.live);
 
         uint256 bal = IWETH(vault.weth()).balanceOf(address(user1));
         user2.call_bid(1.5 ether);
@@ -312,13 +324,13 @@ contract VaultTest is DSTest, ERC721Holder {
         wethBal = IWETH(vault.weth()).balanceOf(address(user3));
         assertEq(user3Bal + 998850637622471404, wethBal);
 
-        assertTrue(vault.auctionState() == VaultStorage.State.ended);
+        assertTrue(vault.auctionState() == TokenVault.State.ended);
     }
 
     function test_redeem() public {
         vault.redeem();
 
-        assertTrue(vault.auctionState() == VaultStorage.State.redeemed);
+        assertTrue(vault.auctionState() == TokenVault.State.redeemed);
 
         assertEq(token.balanceOf(address(this)), 1);
     }
@@ -333,7 +345,7 @@ contract VaultTest is DSTest, ERC721Holder {
 
         user4.call_start(1.05 ether);
         user4.setCanReceive(false);
-        assertTrue(vault.auctionState() == VaultStorage.State.live);
+        assertTrue(vault.auctionState() == TokenVault.State.live);
 
         user2.call_bid(1.5 ether);
         uint256 wethBal = IWETH(vault.weth()).balanceOf(address(user4));
@@ -350,7 +362,9 @@ contract VaultTest is DSTest, ERC721Holder {
     function test_listPriceZero() public {
         token.mint(address(this), 2);
 
-        vault = VaultLogic(factory.mint("testName", "TEST", address(token), 2, 100e18, 0, 50));
+        factory.mint("testName", "TEST", address(token), 2, 100e18, 0, 50);
+
+        vault = factory.vaults(1);
 
         assertEq(vault.votingTokens(), 0);
     }
@@ -358,7 +372,9 @@ contract VaultTest is DSTest, ERC721Holder {
     function testFail_listPriceZeroNoAuction() public {
         token.mint(address(this), 2);
 
-        vault = VaultLogic(factory.mint("testName", "TEST", address(token), 2, 100e18, 0, 50));
+        factory.mint("testName", "TEST", address(token), 2, 100e18, 0, 50);
+
+        vault = factory.vaults(1);
 
         User userTemp = new User(address(vault));
 
