@@ -35,7 +35,9 @@ module.exports = {
     },
     goerli: {
       url: process.env.INFURA,
-      accounts: [process.env.PRIVATE_KEY]
+      accounts: [process.env.PRIVATE_KEY],
+      gas: 2100000,
+      gasPrice: 8000000000
     }
   },
   etherscan: {
