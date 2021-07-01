@@ -36,11 +36,13 @@ async function main() {
   
     console.log(`> npx hardhat verify --network goerli ${factory.address} ${settings.address}`);
 
-    await token.mint(deployer.address);
-    await token.setApprovalForAll(factory.address, true);
+    const mint = await token.mint(deployer.address);
+    console.log(mint)
+    const approve = await token.setApprovalForAll(factory.address, true);
+    console.log(approve)
 
-    await factory.mint("testFractions", "TESTF", token.address, 0, "100000000000000000000", "10000000000000000000", 50);
-
+    const minted = await factory.mint("testFractions", "TESTF", token.address, 0, "100000000000000000000", "10000000000000000000", 50);
+    console.log(minted)
     const vaultAddress = await factory.vaults(0);
 
     console.log(`> npx hardhat verify --network goerli ${vaultAddress} ${settings.address} ${deployer.address} ${token.address} 0 100000000000000000000 10000000000000000000 50 "testFractions" "TESTF"`)

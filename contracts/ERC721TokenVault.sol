@@ -9,7 +9,10 @@ import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
 
 import "./Settings.sol";
 
-contract TokenVault is ERC20, ERC721Holder {
+import "./OpenZeppelin/upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import "./OpenZeppelin/upgradeable/token/ERC20/ERC20Upgradeable.sol";
+
+contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     using Address for address;
 
     /// -----------------------------------
@@ -57,7 +60,7 @@ contract TokenVault is ERC20, ERC721Holder {
     /// -----------------------------------
 
     /// @notice the governance contract which gets paid in ETH
-    address public settings;
+    address public immutable settings;
 
     /// @notice the address who initially deposited the NFT
     address public curator;
@@ -99,8 +102,15 @@ contract TokenVault is ERC20, ERC721Holder {
     /// @notice An event emitted when someone cashes in ERC20 tokens for ETH from an ERC721 token sale
     event Cash(address indexed owner, uint256 shares);
 
-    constructor(address _settings, address _curator, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee, string memory _name, string memory _symbol) ERC20(_name, _symbol) {
+    constructor(address _settings) {
         settings = _settings;
+    }
+
+    function initialize(address _curator, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee, string memory _name, string memory _symbol) external initializer {
+        // initialize inherited contracts
+        __ERC20_init(_name, _symbol);
+        __ERC721Holder_init();
+        // set storage variables
         token = _token;
         id = _id;
         reserveTotal = _listPrice * _supply;
@@ -108,7 +118,7 @@ contract TokenVault is ERC20, ERC721Holder {
         curator = _curator;
         fee = _fee;
         lastClaimed = block.timestamp;
-        votingTokens = _supply;
+        votingTokens = _listPrice == 0 ? 0 : _supply;
 
         auctionState = State.inactive;
 
