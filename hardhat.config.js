@@ -20,7 +20,7 @@ task("accounts", "Prints the list of accounts", async () => {
  */
 module.exports = {
   solidity: {
-    version: "0.8.0",
+    version: "0.8.5",
     settings: {
       optimizer: {
         enabled: true,
