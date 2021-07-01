@@ -48,6 +48,10 @@ contract User is ERC721Holder {
         vault.cash();
     }
 
+    function call_remove(address _user) public {
+        vault.removeReserve(_user);
+    }
+
     // to be able to receive funds
     receive() external payable {} // solhint-disable-line no-empty-blocks
 }
@@ -196,6 +200,41 @@ contract VaultTest is DSTest, ERC721Holder {
 
     function testFail_kickCurator() public {
         curator.call_kickCurator(address(curator));
+    }
+
+    function test_changeReserve() public {
+        // reserve price here should not change
+        vault.transfer(address(user1), 50e18);
+        assertEq(vault.reservePrice(), 1 ether);
+        assertEq(vault.votingTokens(), 50e18);
+
+        assertEq(vault.userPrices(address(user1)), 0);
+
+        // reserve price should update to 1.5 ether
+        user1.call_updatePrice(2 ether);
+        assertEq(vault.reservePrice(), 1.5 ether);
+
+        // lets pretend user1 found an exploit to push up their reserve price
+        vault.removeReserve(address(user1));
+        assertEq(vault.userPrices(address(user1)), 0);
+        assertEq(vault.reservePrice(), 1 ether);
+        assertEq(vault.votingTokens(), 50e18);
+    }
+
+    function testFail_changeReserve() public {
+        // reserve price here should not change
+        vault.transfer(address(user1), 50e18);
+        assertEq(vault.reservePrice(), 1 ether);
+        assertEq(vault.votingTokens(), 50e18);
+
+        assertEq(vault.userPrices(address(user1)), 0);
+
+        // reserve price should update to 1.5 ether
+        user1.call_updatePrice(2 ether);
+        assertEq(vault.reservePrice(), 1.5 ether);
+
+        // user1 is not gov so cannot do anything
+        user1.call_remove(address(this));
     }
 
     /// -----------------------------------

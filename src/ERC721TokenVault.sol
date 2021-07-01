@@ -146,6 +146,23 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
         curator = _curator;
     }
 
+    /// @notice allow governance to remove bad reserve prices
+    function removeReserve(address _user) external {
+        require(msg.sender == Ownable(settings).owner(), "remove:not gov");
+        require(auctionState == State.inactive, "update:auction live cannot update price");
+
+        uint256 old = userPrices[_user];
+        require(0 != old, "update:not an update");
+        uint256 weight = balanceOf(_user);
+
+        votingTokens -= weight;
+        reserveTotal -= weight * old;
+        
+        userPrices[_user] = 0;
+
+        emit PriceUpdate(_user, 0);
+    }
+
     /// -----------------------------------
     /// -------- CURATOR FUNCTIONS --------
     /// -----------------------------------
