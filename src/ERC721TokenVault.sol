@@ -11,8 +11,9 @@ import "./Settings.sol";
 
 import "./OpenZeppelin/upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "./OpenZeppelin/upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "./FractionalNFT.sol";
 
-contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
+contract TokenVault is FractionalNFT, ERC721HolderUpgradeable {
     using Address for address;
 
     /// -----------------------------------

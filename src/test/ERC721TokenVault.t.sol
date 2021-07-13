@@ -32,6 +32,16 @@ contract User is ERC721Holder {
         vault.transfer(_guy, _amount);
     }
 
+    function call_safeTransferFrom(address _guy, uint256 _amount) public {
+        bytes memory temp = new bytes(0);
+        vault.safeTransferFrom(address(this), _guy, 0, _amount, temp);
+    }
+
+    function call_safeBatchTransferFrom(address _guy, uint256 _amount) public {
+        bytes memory temp = new bytes(0);
+        vault.safeBatchTransferFrom(address(this), _guy, _asSingletonArray(0), _asSingletonArray(_amount), temp);
+    }
+
     function call_updatePrice(uint256 _price) public {
         vault.updateUserPrice(_price);
     }
@@ -50,6 +60,13 @@ contract User is ERC721Holder {
 
     function call_remove(address _user) public {
         vault.removeReserve(_user);
+    }
+
+    function _asSingletonArray(uint256 element) private pure returns (uint256[] memory) {
+        uint256[] memory array = new uint256[](1);
+        array[0] = element;
+
+        return array;
     }
 
     // to be able to receive funds
@@ -315,6 +332,70 @@ contract VaultTest is DSTest, ERC721Holder {
         user1.call_transfer(address(this), 30e18);
         user2.call_transfer(address(this), 20e18);
         assertEq(vault.reservePrice(), 1 ether);
+    }
+
+    function test_reservePriceSafeTransferFrom() public {
+        // reserve price here should not change
+        vault.transfer(address(user1), 50e18);
+        assertEq(vault.reservePrice(), 1 ether);
+        assertEq(vault.votingTokens(), 50e18);
+
+        assertEq(vault.userPrices(address(user1)), 0);
+
+        // reserve price should update to 1.5 ether
+        user1.call_updatePrice(2 ether);
+        assertEq(vault.reservePrice(), 1.5 ether);
+
+        // now user 1 sends 2/5 their tokens to user 2
+        // reserve price is now 1 * 5 + 2 * 3 / 8 = 1.375
+        user1.call_safeTransferFrom(address(user2), 20e18);
+        assertEq(vault.reservePrice(), 1.375 ether);
+
+        // now they are voting the same as user1 was so we go back to 1.5 eth
+        user2.call_updatePrice(2 ether);
+        assertEq(vault.reservePrice(), 1.5 ether);
+
+        // send all tokens back to first user
+        // their reserve price is 1 ether and they hold all tokens
+        user1.call_safeTransferFrom(address(this), 30e18);
+        user2.call_safeTransferFrom(address(this), 20e18);
+        assertEq(vault.reservePrice(), 1 ether);
+    }
+
+    function test_reservePriceSafeBatchTransferFrom() public {
+        // reserve price here should not change
+        vault.transfer(address(user1), 50e18);
+        assertEq(vault.reservePrice(), 1 ether);
+        assertEq(vault.votingTokens(), 50e18);
+
+        assertEq(vault.userPrices(address(user1)), 0);
+
+        // reserve price should update to 1.5 ether
+        user1.call_updatePrice(2 ether);
+        assertEq(vault.reservePrice(), 1.5 ether);
+
+        // now user 1 sends 2/5 their tokens to user 2
+        // reserve price is now 1 * 5 + 2 * 3 / 8 = 1.375
+        user1.call_safeBatchTransferFrom(address(user2), 20e18);
+        assertEq(vault.reservePrice(), 1.375 ether);
+
+        // now they are voting the same as user1 was so we go back to 1.5 eth
+        user2.call_updatePrice(2 ether);
+        assertEq(vault.reservePrice(), 1.5 ether);
+
+        // send all tokens back to first user
+        // their reserve price is 1 ether and they hold all tokens
+        user1.call_safeBatchTransferFrom(address(this), 30e18);
+        user2.call_safeBatchTransferFrom(address(this), 20e18);
+        assertEq(vault.reservePrice(), 1 ether);
+    }
+
+    function testFail_safeTransferFrom() public {
+        user1.call_safeTransferFrom(address(user2), 20e28);
+    }
+
+    function testFail_safeBatchTransferFrom() public {
+        user1.call_safeBatchTransferFrom(address(user2), 20e28);
     }
 
     function test_bid() public {
