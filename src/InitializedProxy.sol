@@ -8,14 +8,18 @@ pragma solidity ^0.8.0;
 contract InitializedProxy {
     // address of logic contract
     address public immutable logic;
+    // address of fractional 1155 NFTs
+    address public immutable nfts;
 
     // ======== Constructor =========
 
     constructor(
         address _logic,
+        address _nfts,
         bytes memory _initializationCalldata
     ) {
         logic = _logic;
+        nfts = _nfts;
         // Delegatecall into the logic contract, supplying initialization calldata
         (bool _ok, bytes memory returnData) =
             _logic.delegatecall(_initializationCalldata);

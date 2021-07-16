@@ -10,6 +10,7 @@ import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
 import "./InitializedProxy.sol";
 import "./Settings.sol";
 import "./ERC721TokenVault.sol";
+import "./FERC1155.sol";
 
 contract ERC721VaultFactory is Ownable, Pausable {
   /// @notice the number of ERC721 vaults
@@ -22,12 +23,17 @@ contract ERC721VaultFactory is Ownable, Pausable {
   address public immutable settings;
   /// @notice the TokenVault logic contract
   address public immutable logic;
+  /// @notice the NFT contract
+  address public immutable nfts;
+
+  bool public newVaultSetup = false;
 
   event Mint(address indexed token, uint256 id, uint256 price, address vault, uint256 vaultId);
 
   constructor(address _settings) {
     settings = _settings;
     logic = address(new TokenVault(_settings));
+    nfts = address(new FERC1155());
   }
 
   /// @notice the function to mint a new vault
@@ -51,12 +57,17 @@ contract ERC721VaultFactory is Ownable, Pausable {
           _symbol
     );
 
+    newVaultSetup = true;
+
     address vault = address(
       new InitializedProxy(
         logic,
+        nfts,
         _initializationCalldata
       )
     );
+
+    newVaultSetup = false;
 
     emit Mint(_token, _id, _listPrice, vault, vaultCount);
 
