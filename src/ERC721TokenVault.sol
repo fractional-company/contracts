@@ -8,6 +8,7 @@ import "./OpenZeppelin/token/ERC721/ERC721.sol";
 import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
 
 import "./Settings.sol";
+import "./FNFT.sol";
 
 import "./OpenZeppelin/upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "./OpenZeppelin/upgradeable/token/ERC20/ERC20Upgradeable.sol";
@@ -80,6 +81,9 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     /// @notice a mapping of users to their desired token price
     mapping(address => uint256) public userPrices;
 
+    /// @notice a non transferable NFT
+    FNFT public nft;
+
     /// ------------------------
     /// -------- EVENTS --------
     /// ------------------------
@@ -110,6 +114,7 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
         // initialize inherited contracts
         __ERC20_init(_name, _symbol);
         __ERC721Holder_init();
+        nft = new FNFT(_name, _symbol);
         // set storage variables
         token = _token;
         id = _id;
@@ -285,6 +290,14 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     /// @param _to the ERC20 token receiver
     /// @param _amount the ERC20 token amount
     function _beforeTokenTransfer(address _from, address _to, uint256 _amount) internal virtual override {
+        // burn their NFT
+        if (balanceOf(_from) == _amount) {
+            nft.burn(_from);
+        }
+        // mint them an NFT
+        if (balanceOf(_to) == 0) {
+            nft.mint(_to);
+        }
         if (_from != address(0) && auctionState == State.inactive) {
             uint256 fromPrice = userPrices[_from];
             uint256 toPrice = userPrices[_to];

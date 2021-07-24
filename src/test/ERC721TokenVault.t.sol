@@ -424,6 +424,30 @@ contract VaultTest is DSTest, ERC721Holder {
         vault.transfer(address(user1), 25e18);
     }
 
+    function test_nftBals() public {
+        assertEq(vault.nft().balanceOf(address(this)), 1);
+        vault.transfer(address(user1), 25e18);
+        assertEq(vault.nft().balanceOf(address(this)), 1);
+        assertEq(vault.nft().balanceOf(address(user1)), 1);
+        assertEq(vault.nft().balanceOf(address(user2)), 0);
+        user1.call_transfer(address(user2), 25e18);
+        assertEq(vault.nft().balanceOf(address(this)), 1);
+        assertEq(vault.nft().balanceOf(address(user1)), 0);
+        assertEq(vault.nft().balanceOf(address(user2)), 1);
+        user2.call_transfer(address(user1), 24e18);
+        assertEq(vault.nft().balanceOf(address(this)), 1);
+        assertEq(vault.nft().balanceOf(address(user1)), 1);
+        assertEq(vault.nft().balanceOf(address(user2)), 1);
+        user1.call_transfer(address(user2), 1e18);
+        assertEq(vault.nft().balanceOf(address(this)), 1);
+        assertEq(vault.nft().balanceOf(address(user1)), 1);
+        assertEq(vault.nft().balanceOf(address(user2)), 1);
+    }
+
+    function testFail_nftTransfer() public {
+        vault.nft().transferFrom(address(this), address(user1), 1);
+    }
+
     receive() external payable {}
     
 }
