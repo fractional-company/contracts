@@ -11,9 +11,7 @@ import "./OpenZeppelin/utils/Strings.sol";
 contract FNFT is ERC165, IERC721, IERC721Metadata {
     using Strings for uint256;
 
-    uint256 private _count;
-    mapping (address => uint256) private _ownerToToken;
-    mapping (uint256 => address) private _tokenOwners;
+    mapping(address => bool) private _ownerMinted;
 
     string public override name;
     string public override symbol;
@@ -45,29 +43,20 @@ contract FNFT is ERC165, IERC721, IERC721Metadata {
 
     function balanceOf(address owner) public view virtual override returns (uint256) {
         require(owner != address(0), "ERC721: balance query for the zero address");
-        return _ownerToToken[owner] == 0 ? 0 : 1;
+        return _ownerMinted[owner] ? 1 : 0;
     }
 
     function ownerOf(uint256 tokenId) public view virtual override returns (address) {
-        return _tokenOwners[tokenId];
+        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
+        return uint256ToAddress(tokenId);
     }
 
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
 
-        string memory _tokenURI = _tokenURIs[tokenId];
         string memory base = baseURI();
 
-        // If there is no base URI, return the token URI.
-        if (bytes(base).length == 0) {
-            return _tokenURI;
-        }
-        // If both are set, concatenate the baseURI and tokenURI (via abi.encodePacked).
-        if (bytes(_tokenURI).length > 0) {
-            return string(abi.encodePacked(base, _tokenURI));
-        }
-        // If there is a baseURI but no tokenURI, concatenate the tokenID to the baseURI.
-        return string(abi.encodePacked(base, tokenId.toString()));
+        return string(abi.encodePacked(base, addressToUint256(address(this)).toString(), "/", tokenId.toString()));
     }
 
     function baseURI() public view virtual returns (string memory) {
@@ -107,8 +96,7 @@ contract FNFT is ERC165, IERC721, IERC721Metadata {
     /// supported functions
 
     function mint(address to) external onlyVault {
-        _count++;
-        _mint(to, _count);
+        _mint(to);
     }
 
     function burn(address from) external onlyVault {
@@ -116,19 +104,24 @@ contract FNFT is ERC165, IERC721, IERC721Metadata {
     }
 
     function _exists(uint256 tokenId) internal view virtual returns (bool) {
-        return _tokenOwners[tokenId] != address(0);
+        return _ownerMinted[uint256ToAddress(tokenId)];
     }
 
-    function _mint(address to, uint256 tokenId) internal virtual {
-        _ownerToToken[to] = tokenId;
-        _tokenOwners[tokenId] = to;
-        emit Transfer(address(0), to, tokenId);
+    function _mint(address to) internal virtual {
+        _ownerMinted[to] = true;
+        emit Transfer(address(0), to, addressToUint256(to));
     }
 
     function _burn(address from) internal virtual {
-        uint256 tokenId = _ownerToToken[from];
-        _ownerToToken[from] = 0;
-        _tokenOwners[tokenId] = address(0);
-        emit Transfer(from, address(0), tokenId);
+        _ownerMinted[from] = false;
+        emit Transfer(from, address(0), addressToUint256(from));
+    }
+
+    function addressToUint256(address x) public pure returns(uint256) {
+        return uint256(uint160(address(x)));
+    }
+    
+    function uint256ToAddress(uint256 x) public pure returns(address) {
+        return address(uint160(x));
     }
 }
