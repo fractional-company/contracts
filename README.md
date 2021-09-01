@@ -19,7 +19,7 @@ A minimal proxy contract to represent vaults which allows for cheap deployments.
 ## Token Vault
 The token vault is the smart contract which holds the logic for NFTs that have been fractionalized.
 
-Token holders are able to update the reserve price with a weighted average of all token holders reserve prices. This is done automatically on token transfer to new accounts or manually through `updateUserPrice`.
+Token owners are able to update the reserve price with a weighted average of all token owners reserve prices. This is done automatically on token transfer to new accounts or manually through `updateUserPrice`.
 
 Alongside this logic, is auction logic which allows for an outside user to initial a buyout auction of the NFT. Here there are `start`, `bid`, `end` and `cash` functions.
 #### Start
@@ -29,7 +29,7 @@ The function called for all subsequent auction bids.
 #### End
 The function called when the auction timer is up and ended.
 #### Cash
-The function called for token holders to cash out their share of the ETH used to purchase the underlying NFT.
+The function called for token owners to cash out their share of the ETH used to purchase the underlying NFT.
 
 There is also some admin logic for the `curator` (user who initially deposited the NFT). They can reduce their fee or change the auction length. Alongside this, they are able to claim fees in the form of token supply inflation.
 
@@ -38,11 +38,11 @@ This is a single token ERC721 which is used to custody multiple ERC721 tokens.
 #### depositERC721
 Anyone can deposit an ERC721 token into the contract
 #### withdrawERC721
-The token holder can withdraw any ERC721 tokens in the contract
+The token owner can withdraw any ERC721 tokens in the contract
 #### withdrawETH
-The token holder can withdraw any ETH in the contract
+The token owner can withdraw any ETH in the contract
 #### withdrawERC20
-The token holder can withdraw any ERC20 token in the contract
+The token owner can withdraw any ERC20 token in the contract
 
 ## Deployments
 ### Mainnet
