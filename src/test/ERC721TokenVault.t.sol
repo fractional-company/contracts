@@ -264,8 +264,8 @@ contract VaultTest is DSTest, ERC721Holder {
     }
 
     function test_updateFee() public {
-        vault.updateFee(100);
-        assertEq(vault.fee(), 100);
+        vault.updateFee(25);
+        assertEq(vault.fee(), 25);
     }
 
     function testFail_updateFee() public {
@@ -329,13 +329,13 @@ contract VaultTest is DSTest, ERC721Holder {
 
         assertTrue(vault.auctionState() == TokenVault.State.live);
 
-        uint256 bal = IWETH(vault.weth()).balanceOf(address(user1));
+        uint256 bal = address(user1).balance;
         user2.call_bid(1.5 ether);
-        assertEq(bal + 1.05 ether, IWETH(vault.weth()).balanceOf(address(user1)));
+        assertEq(bal + 1.05 ether, address(user1).balance);
 
-        bal = IWETH(vault.weth()).balanceOf(address(user2));
+        bal = address(user2).balance;
         user1.call_bid(2 ether);
-        assertEq(bal + 1.5 ether, IWETH(vault.weth()).balanceOf(address(user2)));
+        assertEq(bal + 1.5 ether, address(user2).balance);
 
         hevm.warp(block.timestamp + 7 days);
 
@@ -347,20 +347,20 @@ contract VaultTest is DSTest, ERC721Holder {
         // user1 gets 1/4 of 2 ETH or 0.5 ETH
         // user2 gets 1/4 of 2 ETH or 0.5 ETH
         // this gets 1/2 of 2 ETH or 1 ETH
-        uint256 user1Bal = IWETH(vault.weth()).balanceOf(address(user1));
-        uint256 user2Bal = IWETH(vault.weth()).balanceOf(address(user2));
-        uint256 user3Bal = IWETH(vault.weth()).balanceOf(address(user3));
+        uint256 user1Bal = address(user1).balance;
+        uint256 user2Bal = address(user2).balance;
+        uint256 user3Bal = address(user3).balance;
 
         user1.call_cash();
-        uint256 wethBal = IWETH(vault.weth()).balanceOf(address(user1));
+        uint256 wethBal = address(user1).balance;
         assertEq(user1Bal + 499425318811235702, wethBal);
 
         user2.call_cash();
-        wethBal = IWETH(vault.weth()).balanceOf(address(user2));
+        wethBal = address(user2).balance;
         assertEq(user2Bal + 499425318811235702, wethBal);
 
         user3.call_cash();
-        wethBal = IWETH(vault.weth()).balanceOf(address(user3));
+        wethBal = address(user3).balance;
         assertEq(user3Bal + 998850637622471404, wethBal);
 
         assertTrue(vault.auctionState() == TokenVault.State.ended);
@@ -424,28 +424,56 @@ contract VaultTest is DSTest, ERC721Holder {
         vault.transfer(address(user1), 25e18);
     }
 
-    function test_nftBals() public {
-        assertEq(vault.nft().balanceOf(address(this)), 1);
+    function test_auctionEndCurator0() public {
+        vault.updateFee(0);
+        vault.updateCurator(address(0));
+        settings.setGovernanceFee(0);
         vault.transfer(address(user1), 25e18);
-        assertEq(vault.nft().balanceOf(address(this)), 1);
-        assertEq(vault.nft().balanceOf(address(user1)), 1);
-        assertEq(vault.nft().balanceOf(address(user2)), 0);
-        user1.call_transfer(address(user2), 25e18);
-        assertEq(vault.nft().balanceOf(address(this)), 1);
-        assertEq(vault.nft().balanceOf(address(user1)), 0);
-        assertEq(vault.nft().balanceOf(address(user2)), 1);
-        user2.call_transfer(address(user1), 24e18);
-        assertEq(vault.nft().balanceOf(address(this)), 1);
-        assertEq(vault.nft().balanceOf(address(user1)), 1);
-        assertEq(vault.nft().balanceOf(address(user2)), 1);
-        user1.call_transfer(address(user2), 1e18);
-        assertEq(vault.nft().balanceOf(address(this)), 1);
-        assertEq(vault.nft().balanceOf(address(user1)), 1);
-        assertEq(vault.nft().balanceOf(address(user2)), 1);
-    }
+        user1.call_updatePrice(1 ether);
+        vault.transfer(address(user2), 25e18);
+        user2.call_updatePrice(1 ether);
+        vault.transfer(address(user3), 50e18);
+        user3.call_updatePrice(1 ether);
 
-    function testFail_nftTransfer() public {
-        vault.nft().transferFrom(address(this), address(user1), 1);
+        user1.call_start(1.05 ether);
+
+        assertTrue(vault.auctionState() == TokenVault.State.live);
+
+        uint256 bal = address(user1).balance;
+        user2.call_bid(1.5 ether);
+        assertEq(bal + 1.05 ether, address(user1).balance);
+
+        bal = address(user2).balance;
+        user1.call_bid(2 ether);
+        assertEq(bal + 1.5 ether, address(user2).balance);
+
+        hevm.warp(block.timestamp + 7 days);
+
+        vault.end();
+
+        assertEq(token.balanceOf(address(user1)), 1);
+
+        // auction has ended. Now lets get all token holders their WETH since they are contracts
+        // user1 gets 1/4 of 2 ETH or 0.5 ETH
+        // user2 gets 1/4 of 2 ETH or 0.5 ETH
+        // this gets 1/2 of 2 ETH or 1 ETH
+        uint256 user1Bal = address(user1).balance;
+        uint256 user2Bal = address(user2).balance;
+        uint256 user3Bal = address(user3).balance;
+
+        user1.call_cash();
+        uint256 wethBal = address(user1).balance;
+        assertEq(user1Bal + 0.5 ether, wethBal);
+
+        user2.call_cash();
+        wethBal = address(user2).balance;
+        assertEq(user2Bal + 0.5 ether , wethBal);
+
+        user3.call_cash();
+        wethBal = address(user3).balance;
+        assertEq(user3Bal + 1 ether, wethBal);
+
+        assertTrue(vault.auctionState() == TokenVault.State.ended);
     }
 
     receive() external payable {}
