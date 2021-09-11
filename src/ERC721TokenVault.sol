@@ -1,16 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./Interfaces/IWETH.sol";
-import "./OpenZeppelin/math/Math.sol";
-import "./OpenZeppelin/token/ERC20/ERC20.sol";
-import "./OpenZeppelin/token/ERC721/ERC721.sol";
-import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
-
 import "./Settings.sol";
-
-import "./OpenZeppelin/upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import "./Interfaces/IWETH.sol";
+import "./OpenZeppelin/token/ERC721/ERC721.sol";
 import "./OpenZeppelin/upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "./OpenZeppelin/upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 
 contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     using Address for address;
@@ -119,13 +114,10 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
         // set storage variables
         token = _token;
         id = _id;
-        // reserveTotal = _listPrice * _supply;
         auctionLength = 3 days;
         curator = _curator;
         fee = _fee;
         lastClaimed = block.timestamp;
-        // votingTokens = _listPrice == 0 ? 0 : _supply;
-
         auctionState = State.inactive;
         userPrices[_curator] = _listPrice;
 
@@ -399,12 +391,6 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
         _sendETHOrWETH(payable(msg.sender), share);
 
         emit Cash(msg.sender, share);
-    }
-
-    /// @dev internal helper function to send ETH and WETH on failure
-    function _sendWETH(address who, uint256 amount) internal {
-        IWETH(weth).deposit{value: amount}();
-        IWETH(weth).transfer(who, IWETH(weth).balanceOf(address(this)));
     }
 
     // Will attempt to transfer ETH, but will transfer WETH instead if it fails.
