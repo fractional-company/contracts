@@ -75,6 +75,12 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     /// @notice a mapping of users to their desired token price
     mapping(address => uint256) public userPrices;
 
+    /// @notice array of all addresses with bids
+    address[] addressArray;
+
+    /// @notice array of all the bids
+    uint256[] prices;
+
     /// ------------------------
     /// -------- EVENTS --------
     /// ------------------------
@@ -127,9 +133,61 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     /// --------------------------------
     /// -------- VIEW FUNCTIONS --------
     /// --------------------------------
+    /// @notice sort prices array
+    /// @param arr the new curator
 
-    function reservePrice() public view returns(uint256) {
-        return votingTokens == 0 ? 0 : reserveTotal / votingTokens;
+    function sort(uint256[] memory arr) public returns(uint256[] memory) {
+       quickSort(arr, int(0), int(arr.length - 1));
+       return arr;
+    }
+    
+    function quickSort(uint[] memory arr, int left, int right) internal{
+        int i = left;
+        int j = right;
+        if(i == j){
+            return;
+        }
+        uint pivot = arr[uint(left + (right - left) / 2)];
+        while (i <= j) {
+            while(arr[uint(i)] < pivot){
+                i++;
+            } 
+            while (pivot < arr[uint(j)]){
+                j--;
+            } 
+            if (i <= j) {
+                (arr[uint(i)], arr[uint(j)]) = (arr[uint(j)], arr[uint(i)]);
+                i++;
+                j--;
+            }
+        }
+        if (left < j)
+            quickSort(arr, left, j);
+        if (i < right)
+            quickSort(arr, i, right);
+    }
+
+    function reservePrice() public returns(uint256) {
+        if (votingTokens == 0) {
+            return 0;
+        }
+
+        delete prices;
+        for(uint256 i=0; i<addressArray.length; i++){
+            prices.push(userPrices[addressArray[i]]);
+        }
+
+        prices = sort(prices);
+
+        bool isEven = (prices.length % 2 == 0);
+
+        if(isEven){
+            return (prices[prices.length / 2] + prices[prices.length / 2 - 1]) / 2;
+        }
+        else{
+            return (prices[prices.length / 2]) / votingTokens;
+        }
+
     }
 
     /// -------------------------------
@@ -264,11 +322,20 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
 
             votingTokens += weight;
             reserveTotal += weight * _new;
+
+            addressArray.push(msg.sender);
         } 
         // they no longer want to vote
         else if (_new == 0) {
             votingTokens -= weight;
             reserveTotal -= weight * old;
+
+            for(uint i=0; i<addressArray.length; i++) {
+                if (addressArray[i] == msg.sender) {
+                    delete addressArray[i];
+                    break;
+                }
+            }
         } 
         // they are updating their vote
         else {
