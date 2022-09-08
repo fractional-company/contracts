@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
-import "../Settings.sol";
-import "../ERC721VaultFactory.sol";
-import "../ERC721TokenVault.sol";
+import "../src/Settings.sol";
+import "../src/ERC721VaultFactory.sol";
+import "../src/ERC721TokenVault.sol";
 import "./TestERC721.sol";
 
 interface Hevm {
@@ -21,13 +21,12 @@ interface Hevm {
 }
 
 contract User is ERC721Holder {
-
     TokenVault public vault;
 
     constructor(address _vault) {
         vault = TokenVault(_vault);
     }
-    
+
     function call_transfer(address _guy, uint256 _amount) public {
         vault.transfer(_guy, _amount);
     }
@@ -35,11 +34,11 @@ contract User is ERC721Holder {
     function call_updatePrice(uint256 _price) public {
         vault.updateUserPrice(_price);
     }
-    
+
     function call_bid(uint256 _amount) public {
         vault.bid{value: _amount}();
     }
-    
+
     function call_start(uint256 _amount) public {
         vault.start{value: _amount}();
     }
@@ -57,7 +56,6 @@ contract User is ERC721Holder {
 }
 
 contract UserNoETH is ERC721Holder {
-
     bool public canReceive = true;
 
     TokenVault public vault;
@@ -65,7 +63,7 @@ contract UserNoETH is ERC721Holder {
     constructor(address _vault) {
         vault = TokenVault(_vault);
     }
-    
+
     function call_transfer(address _guy, uint256 _amount) public {
         vault.transfer(_guy, _amount);
     }
@@ -73,11 +71,11 @@ contract UserNoETH is ERC721Holder {
     function call_updatePrice(uint256 _price) public {
         vault.updateUserPrice(_price);
     }
-    
+
     function call_bid(uint256 _amount) public {
         vault.bid{value: _amount}();
     }
-    
+
     function call_start(uint256 _amount) public {
         vault.start{value: _amount}();
     }
@@ -91,9 +89,10 @@ contract UserNoETH is ERC721Holder {
     }
 
     // to be able to receive funds
-    receive() external payable {require(canReceive);} // solhint-disable-line no-empty-blocks
+    receive() external payable {
+        require(canReceive);
+    } // solhint-disable-line no-empty-blocks
 }
-
 
 contract Curator {
     TokenVault public vault;
@@ -118,7 +117,7 @@ contract Curator {
 /// @title Tests for the vaults
 contract VaultTest is DSTest, ERC721Holder {
     Hevm public hevm;
-    
+
     ERC721VaultFactory public factory;
     Settings public settings;
     TestERC721 public token;
@@ -147,7 +146,15 @@ contract VaultTest is DSTest, ERC721Holder {
         token.mint(address(this), 1);
 
         token.setApprovalForAll(address(factory), true);
-        factory.mint("testName", "TEST", address(token), 1, 100e18, 1 ether, 50);
+        factory.mint(
+            "testName",
+            "TEST",
+            address(token),
+            1,
+            100e18,
+            1 ether,
+            50
+        );
 
         vault = TokenVault(factory.vaults(0));
 
@@ -174,7 +181,15 @@ contract VaultTest is DSTest, ERC721Holder {
         temp.mint(address(this), 1);
 
         temp.setApprovalForAll(address(factory), true);
-        factory.mint("testName2", "TEST2", address(temp), 1, 100e18, 1 ether, 50);
+        factory.mint(
+            "testName2",
+            "TEST2",
+            address(temp),
+            1,
+            100e18,
+            1 ether,
+            50
+        );
     }
 
     function testFail_pause() public {
@@ -184,7 +199,15 @@ contract VaultTest is DSTest, ERC721Holder {
         temp.mint(address(this), 1);
 
         temp.setApprovalForAll(address(factory), true);
-        factory.mint("testName2", "TEST2", address(temp), 1, 100e18, 1 ether, 50);
+        factory.mint(
+            "testName2",
+            "TEST2",
+            address(temp),
+            1,
+            100e18,
+            1 ether,
+            50
+        );
     }
 
     /// -------------------------------
@@ -278,7 +301,10 @@ contract VaultTest is DSTest, ERC721Holder {
         // we should increase total supply by 6%
         hevm.warp(block.timestamp + 31536000 seconds);
         vault.claimFees();
-        assertTrue(vault.totalSupply() >= 105999999999900000000 && vault.totalSupply() < 106000000000000000000);
+        assertTrue(
+            vault.totalSupply() >= 105999999999900000000 &&
+                vault.totalSupply() < 106000000000000000000
+        );
     }
 
     /// --------------------------------
@@ -466,7 +492,7 @@ contract VaultTest is DSTest, ERC721Holder {
 
         user2.call_cash();
         wethBal = address(user2).balance;
-        assertEq(user2Bal + 0.5 ether , wethBal);
+        assertEq(user2Bal + 0.5 ether, wethBal);
 
         user3.call_cash();
         wethBal = address(user3).balance;
@@ -476,5 +502,4 @@ contract VaultTest is DSTest, ERC721Holder {
     }
 
     receive() external payable {}
-    
 }

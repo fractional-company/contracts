@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 
-import "../Settings.sol";
+import "../src/Settings.sol";
 import "./TestERC721.sol";
 
 interface Hevm {
@@ -22,7 +22,7 @@ interface Hevm {
 /// @title Tests for the settings
 contract SettingsTest is DSTest {
     Hevm public hevm;
-    
+
     Settings public settings;
     TestERC721 public token;
     TestERC721 public token2;
@@ -110,5 +110,4 @@ contract SettingsTest is DSTest {
     function test_setFeeReceiver() public {
         settings.setFeeReceiver(payable(address(this)));
     }
-    
 }
