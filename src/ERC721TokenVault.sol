@@ -3,12 +3,12 @@ pragma solidity ^0.8.0;
 
 import "./Settings.sol";
 import "./Interfaces/IWETH.sol";
-import "./OpenZeppelin/token/ERC721/ERC721.sol";
-import "./OpenZeppelin/upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "./OpenZeppelin/upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import "openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol";
+import "openzeppelin-contracts-upgradeable/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 
 contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
-    using Address for address;
+    using AddressUpgradeable for address;
 
     /// -----------------------------------
     /// -------- BASIC INFORMATION --------

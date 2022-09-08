@@ -1,11 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./OpenZeppelin/access/Ownable.sol";
-import "./OpenZeppelin/utils/Pausable.sol";
+import "openzeppelin-contracts/contracts/access/Ownable.sol";
+import "openzeppelin-contracts/contracts/security/Pausable.sol";
 
-import "./OpenZeppelin/token/ERC721/ERC721.sol";
-import "./OpenZeppelin/token/ERC721/ERC721Holder.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 import "./InitializedProxy.sol";
 import "./Settings.sol";

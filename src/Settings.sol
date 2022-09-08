@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./OpenZeppelin/access/Ownable.sol";
+import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "./Interfaces/ISettings.sol";
 
 contract Settings is Ownable, ISettings {
