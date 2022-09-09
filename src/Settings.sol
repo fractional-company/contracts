@@ -1,11 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./OpenZeppelin/access/Ownable.sol";
+import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "./Interfaces/ISettings.sol";
 
 contract Settings is Ownable, ISettings {
-
     /// @notice the maximum auction length
     uint256 public override maxAuctionLength;
 
@@ -30,7 +29,7 @@ contract Settings is Ownable, ISettings {
     /// @notice the % bid increase required for a new bid
     uint256 public override minBidIncrease;
 
-    /// @notice 10% bid increase is max 
+    /// @notice 10% bid increase is max
     uint256 public constant maxMinBidIncrease = 100;
 
     /// @notice 1% bid increase is min
@@ -39,7 +38,7 @@ contract Settings is Ownable, ISettings {
     /// @notice the % of tokens required to be voting for an auction to start
     uint256 public override minVotePercentage;
 
-    /// @notice the max % increase over the initial 
+    /// @notice the max % increase over the initial
     uint256 public override maxReserveFactor;
 
     /// @notice the max % decrease from the initial
@@ -70,9 +69,9 @@ contract Settings is Ownable, ISettings {
         maxAuctionLength = 2 weeks;
         minAuctionLength = 3 days;
         feeReceiver = payable(msg.sender);
-        minReserveFactor = 200;  // 20%
+        minReserveFactor = 200; // 20%
         maxReserveFactor = 5000; // 500%
-        minBidIncrease = 50;     // 5%
+        minBidIncrease = 50; // 5%
         maxCuratorFee = 100;
         minVotePercentage = 250; // 25%
     }
@@ -150,5 +149,4 @@ contract Settings is Ownable, ISettings {
 
         feeReceiver = _receiver;
     }
-
 }

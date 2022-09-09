@@ -3,12 +3,12 @@ pragma solidity ^0.8.0;
 
 import "./Settings.sol";
 import "./Interfaces/IWETH.sol";
-import "./OpenZeppelin/token/ERC721/ERC721.sol";
-import "./OpenZeppelin/upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "./OpenZeppelin/upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import "openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol";
+import "openzeppelin-contracts-upgradeable/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 
 contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
-    using Address for address;
+    using AddressUpgradeable for address;
 
     /// -----------------------------------
     /// -------- BASIC INFORMATION --------
@@ -46,7 +46,12 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     /// @notice the current user winning the token auction
     address payable public winning;
 
-    enum State { inactive, live, ended, redeemed }
+    enum State {
+        inactive,
+        live,
+        ended,
+        redeemed
+    }
 
     State public auctionState;
 
@@ -80,16 +85,16 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     /// ------------------------
 
     /// @notice An event emitted when a user updates their price
-    event PriceUpdate(address indexed user, uint price);
+    event PriceUpdate(address indexed user, uint256 price);
 
     /// @notice An event emitted when an auction starts
-    event Start(address indexed buyer, uint price);
+    event Start(address indexed buyer, uint256 price);
 
     /// @notice An event emitted when a bid is made
-    event Bid(address indexed buyer, uint price);
+    event Bid(address indexed buyer, uint256 price);
 
     /// @notice An event emitted when an auction is won
-    event Won(address indexed buyer, uint price);
+    event Won(address indexed buyer, uint256 price);
 
     /// @notice An event emitted when someone redeems all tokens for the NFT
     event Redeem(address indexed redeemer);
@@ -107,7 +112,16 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
         settings = _settings;
     }
 
-    function initialize(address _curator, address _token, uint256 _id, uint256 _supply, uint256 _listPrice, uint256 _fee, string memory _name, string memory _symbol) external initializer {
+    function initialize(
+        address _curator,
+        address _token,
+        uint256 _id,
+        uint256 _supply,
+        uint256 _listPrice,
+        uint256 _fee,
+        string memory _name,
+        string memory _symbol
+    ) external initializer {
         // initialize inherited contracts
         __ERC20_init(_name, _symbol);
         __ERC721Holder_init();
@@ -128,7 +142,7 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     /// -------- VIEW FUNCTIONS --------
     /// --------------------------------
 
-    function reservePrice() public view returns(uint256) {
+    function reservePrice() public view returns (uint256) {
         return votingTokens == 0 ? 0 : reserveTotal / votingTokens;
     }
 
@@ -147,7 +161,10 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     /// @notice allow governance to remove bad reserve prices
     function removeReserve(address _user) external {
         require(msg.sender == Ownable(settings).owner(), "remove:not gov");
-        require(auctionState == State.inactive, "update:auction live cannot update price");
+        require(
+            auctionState == State.inactive,
+            "update:auction live cannot update price"
+        );
 
         uint256 old = userPrices[_user];
         require(0 != old, "update:not an update");
@@ -155,7 +172,7 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
 
         votingTokens -= weight;
         reserveTotal -= weight * old;
-        
+
         userPrices[_user] = 0;
 
         emit PriceUpdate(_user, 0);
@@ -177,7 +194,11 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     /// @param _length the new base price
     function updateAuctionLength(uint256 _length) external {
         require(msg.sender == curator, "update:not curator");
-        require(_length >= ISettings(settings).minAuctionLength() && _length <= ISettings(settings).maxAuctionLength(), "update:invalid auction length");
+        require(
+            _length >= ISettings(settings).minAuctionLength() &&
+                _length <= ISettings(settings).maxAuctionLength(),
+            "update:invalid auction length"
+        );
 
         auctionLength = _length;
         emit UpdateAuctionLength(_length);
@@ -188,7 +209,10 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     function updateFee(uint256 _fee) external {
         require(msg.sender == curator, "update:not curator");
         require(_fee < fee, "update:can't raise");
-        require(_fee <= ISettings(settings).maxCuratorFee(), "update:cannot increase fee this high");
+        require(
+            _fee <= ISettings(settings).maxCuratorFee(),
+            "update:cannot increase fee this high"
+        );
 
         _claimFees();
 
@@ -203,10 +227,13 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
 
     /// @dev interal fuction to calculate and mint fees
     function _claimFees() internal {
-        require(auctionState != State.ended, "claim:cannot claim after auction ends");
+        require(
+            auctionState != State.ended,
+            "claim:cannot claim after auction ends"
+        );
 
         // get how much in fees the curator would make in a year
-        uint256 currentAnnualFee = fee * totalSupply() / 1000; 
+        uint256 currentAnnualFee = (fee * totalSupply()) / 1000;
         // get how much that is per second;
         uint256 feePerSecond = currentAnnualFee / 31536000;
         // get how many seconds they are eligible to claim
@@ -217,7 +244,7 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
         // now lets do the same for governance
         address govAddress = ISettings(settings).feeReceiver();
         uint256 govFee = ISettings(settings).governanceFee();
-        currentAnnualFee = govFee * totalSupply() / 1000; 
+        currentAnnualFee = (govFee * totalSupply()) / 1000;
         feePerSecond = currentAnnualFee / 31536000;
         uint256 govMint = sinceLastClaim * feePerSecond;
 
@@ -240,7 +267,10 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     /// @notice a function for an end user to update their desired sale price
     /// @param _new the desired price in ETH
     function updateUserPrice(uint256 _new) external {
-        require(auctionState == State.inactive, "update:auction live cannot update price");
+        require(
+            auctionState == State.inactive,
+            "update:auction live cannot update price"
+        );
         uint256 old = userPrices[msg.sender];
         require(_new != old, "update:not an update");
         uint256 weight = balanceOf(msg.sender);
@@ -257,26 +287,31 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
         else if (old == 0) {
             uint256 averageReserve = reserveTotal / votingTokens;
 
-            uint256 reservePriceMin = averageReserve * ISettings(settings).minReserveFactor() / 1000;
+            uint256 reservePriceMin = (averageReserve *
+                ISettings(settings).minReserveFactor()) / 1000;
             require(_new >= reservePriceMin, "update:reserve price too low");
-            uint256 reservePriceMax = averageReserve * ISettings(settings).maxReserveFactor() / 1000;
+            uint256 reservePriceMax = (averageReserve *
+                ISettings(settings).maxReserveFactor()) / 1000;
             require(_new <= reservePriceMax, "update:reserve price too high");
 
             votingTokens += weight;
             reserveTotal += weight * _new;
-        } 
+        }
         // they no longer want to vote
         else if (_new == 0) {
             votingTokens -= weight;
             reserveTotal -= weight * old;
-        } 
+        }
         // they are updating their vote
         else {
-            uint256 averageReserve = (reserveTotal - (old * weight)) / (votingTokens - weight);
+            uint256 averageReserve = (reserveTotal - (old * weight)) /
+                (votingTokens - weight);
 
-            uint256 reservePriceMin = averageReserve * ISettings(settings).minReserveFactor() / 1000;
+            uint256 reservePriceMin = (averageReserve *
+                ISettings(settings).minReserveFactor()) / 1000;
             require(_new >= reservePriceMin, "update:reserve price too low");
-            uint256 reservePriceMax = averageReserve * ISettings(settings).maxReserveFactor() / 1000;
+            uint256 reservePriceMax = (averageReserve *
+                ISettings(settings).maxReserveFactor()) / 1000;
             require(_new <= reservePriceMax, "update:reserve price too high");
 
             reserveTotal = reserveTotal + (weight * _new) - (weight * old);
@@ -291,7 +326,11 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     /// @param _from the ERC20 token sender
     /// @param _to the ERC20 token receiver
     /// @param _amount the ERC20 token amount
-    function _beforeTokenTransfer(address _from, address _to, uint256 _amount) internal virtual override {
+    function _beforeTokenTransfer(
+        address _from,
+        address _to,
+        uint256 _amount
+    ) internal virtual override {
         if (auctionState == State.inactive) {
             uint256 fromPrice = userPrices[_from];
             uint256 toPrice = userPrices[_to];
@@ -311,7 +350,10 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
                 }
                 // both holders are voters
                 else {
-                    reserveTotal = reserveTotal + (_amount * toPrice) - (_amount * fromPrice);
+                    reserveTotal =
+                        reserveTotal +
+                        (_amount * toPrice) -
+                        (_amount * fromPrice);
                 }
             }
         }
@@ -321,8 +363,12 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     function start() external payable {
         require(auctionState == State.inactive, "start:no auction starts");
         require(msg.value >= reservePrice(), "start:too low bid");
-        require(votingTokens * 1000 >= ISettings(settings).minVotePercentage() * totalSupply(), "start:not enough voters");
-        
+        require(
+            votingTokens * 1000 >=
+                ISettings(settings).minVotePercentage() * totalSupply(),
+            "start:not enough voters"
+        );
+
         auctionEnd = block.timestamp + auctionLength;
         auctionState = State.live;
 
@@ -371,10 +417,10 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
     function redeem() external {
         require(auctionState == State.inactive, "redeem:no redeeming");
         _burn(msg.sender, totalSupply());
-        
+
         // transfer erc721 to redeemer
         IERC721(token).transferFrom(address(this), msg.sender, id);
-        
+
         auctionState = State.redeemed;
 
         emit Redeem(msg.sender);
@@ -385,7 +431,7 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
         require(auctionState == State.ended, "cash:vault not closed yet");
         uint256 bal = balanceOf(msg.sender);
         require(bal > 0, "cash:no tokens to cash out");
-        uint256 share = bal * address(this).balance / totalSupply();
+        uint256 share = (bal * address(this).balance) / totalSupply();
         _burn(msg.sender, bal);
 
         _sendETHOrWETH(payable(msg.sender), share);
@@ -420,5 +466,4 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
         (bool success, ) = to.call{value: value, gas: 30000}("");
         return success;
     }
-
 }
