@@ -401,7 +401,10 @@ contract TokenVault is ERC20Upgradeable, ERC721HolderUpgradeable {
             // the auction is not impeded and the recipient still
             // can claim ETH via the WETH contract (similar to escrow).
             IWETH(weth).deposit{value: value}();
-            IWETH(weth).transfer(to, value);
+            require(
+                IWETH(weth).transfer(to, value),
+                "WETH: Transfer Transfer not successful"
+            );
             // At this point, the recipient can unwrap WETH.
         }
     }
